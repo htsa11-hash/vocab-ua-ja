@@ -43,13 +43,36 @@ const statsList = document.getElementById('statsList');
 const exportBtn = document.getElementById('exportBtn');
 const importFile = document.getElementById('importFile');
 
-settingsBtn.addEventListener('click', () => {
+function openSettings() {
   renderStats();
   settingsModal.hidden = false;
-});
-closeSettingsBtn.addEventListener('click', () => { settingsModal.hidden = true; });
+}
+
+function closeSettings() {
+  settingsModal.hidden = true;
+}
+
+settingsBtn.addEventListener('click', openSettings);
+closeSettingsBtn.addEventListener('click', closeSettings);
 settingsModal.addEventListener('click', (e) => {
-  if (e.target === settingsModal) settingsModal.hidden = true;
+  if (e.target === settingsModal) closeSettings();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !settingsModal.hidden) closeSettings();
+});
+
+// Swipe-down to close (touch devices, e.g. iPhone Safari).
+let touchStartY = null;
+const modalContent = settingsModal.querySelector('.modal-content');
+modalContent.addEventListener('touchstart', (e) => {
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+modalContent.addEventListener('touchend', (e) => {
+  if (touchStartY === null) return;
+  const deltaY = e.changedTouches[0].clientY - touchStartY;
+  touchStartY = null;
+  if (deltaY > 80) closeSettings();
 });
 
 function renderStats() {

@@ -690,6 +690,10 @@ li.st-due .word-ua { color: #3498db; }
   z-index: 200;
 }
 
+.modal[hidden] {
+  display: none;
+}
+
 .modal-content {
   background: #1a1226;
   border: 1px solid #87ceeb;
