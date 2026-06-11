@@ -37,17 +37,10 @@
         </div>
 
         <div id="extractResult" class="extract-result" hidden>
-          <h4>フレーズ</h4>
-          <p class="hint">タップで削除・分割できます</p>
-          <div id="phraseChips" class="chip-list"></div>
-
-          <h4>単語</h4>
-          <p class="hint">複数選択して「フレーズ化」、タップで削除</p>
+          <h4>抽出された単語</h4>
+          <p class="hint">タップで削除できます</p>
           <div id="wordChips" class="chip-list"></div>
 
-          <div class="form-actions">
-            <button id="phraseifyBtn" type="button">選択した単語をフレーズにする</button>
-          </div>
           <div class="form-actions">
             <button id="saveSentenceBtn" type="button" class="primary-btn">この文章を保存</button>
           </div>
@@ -62,20 +55,7 @@
     <section id="vocabTab" class="tab-content">
       <div class="filter-row">
         <input type="text" id="vocabSearch" placeholder="検索...">
-        <input type="text" id="categoryFilter" placeholder="カテゴリ" list="categoryList">
-      </div>
-      <div class="filter-row">
-        <select id="typeFilter">
-          <option value="">単語＋フレーズ</option>
-          <option value="word">単語のみ</option>
-          <option value="phrase">フレーズのみ</option>
-        </select>
-        <label><input type="checkbox" id="untranslatedFilter"> 未翻訳のみ</label>
         <label><input type="checkbox" id="weakFilter"> 苦手のみ</label>
-      </div>
-
-      <div class="form-actions">
-        <button id="mergeBtn" type="button">選択を結合してフレーズ化</button>
       </div>
 
       <ul id="vocabList"></ul>
@@ -98,14 +78,6 @@
             <option value="input">入力式</option>
             <option value="choice">選択式</option>
             <option value="card">カード反転式</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>対象:</label>
-          <select id="testTypeScope">
-            <option value="">単語＋フレーズ</option>
-            <option value="word">単語のみ</option>
-            <option value="phrase">フレーズのみ</option>
           </select>
         </div>
         <div class="form-row">
@@ -166,12 +138,6 @@
         </div>
         <p class="hint">エクスポートしたファイルを保管しておくと、別の端末やブラウザでもデータを復元できます。</p>
       </div>
-    </div>
-
-    <!-- 単語タップ用パネル -->
-    <div id="wordPanel" class="word-panel" hidden>
-      <button class="word-panel-close" id="wordPanelClose">×</button>
-      <div class="word-panel-content" id="wordPanelContent"></div>
     </div>
   </div>
 

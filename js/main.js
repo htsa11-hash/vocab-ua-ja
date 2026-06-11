@@ -1,13 +1,13 @@
 import {
   state, saveItems, exportData, importData, todayStr,
-  bumpTodayLearned, bumpStreak, itemStatus,
+  bumpTodayLearned, bumpStreak,
 } from './storage.js';
 import {
-  extractFromSentence, addVocabItem, addSentence, removeItem, setItemType,
-  mergeItems, splitItem, dueWords, applyRating, isCorrectAnswer,
-  recordTestResult, vocabItems, sentenceItems, findVocabItem,
+  extractFromSentence, addVocabItem, addSentence, removeItem,
+  dueWords, applyRating, isCorrectAnswer,
+  recordTestResult, vocabItems, sentenceItems,
 } from './words.js';
-import { makeSpeakButton, ttsSupported } from './tts.js';
+import { makeSpeakButton } from './tts.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -91,8 +91,6 @@ modalContent.addEventListener('touchend', (e) => {
 function renderStats() {
   const vocab = vocabItems();
   const total = vocab.length;
-  const totalWords = vocab.filter((it) => it.type === 'word').length;
-  const totalPhrases = vocab.filter((it) => it.type === 'phrase').length;
   const weak = vocab.filter((it) => it.weak).length;
   const due = dueWords().length;
   const totalCorrect = vocab.reduce((s, it) => s + it.stats.correct, 0);
@@ -100,13 +98,11 @@ function renderStats() {
   const accuracy = (totalCorrect + totalIncorrect) === 0 ? 0 : Math.round((totalCorrect / (totalCorrect + totalIncorrect)) * 100);
 
   const items = [
-    ['総単語数', totalWords],
-    ['総フレーズ数', totalPhrases],
+    ['総単語数', total],
     ['苦手単語数', weak],
     ['復習待ち件数', due],
     ['正答率', `${accuracy}%`],
     ['連続学習日数', `${state.settings.streak} 日`],
-    ['登録項目合計', total],
   ];
 
   statsList.innerHTML = '';
@@ -141,13 +137,6 @@ importFile.addEventListener('change', async (e) => {
   importFile.value = '';
 });
 
-// ========================= 単語タップ用パネル =========================
-const wordPanel = document.getElementById('wordPanel');
-const wordPanelContent = document.getElementById('wordPanelContent');
-document.getElementById('wordPanelClose').addEventListener('click', () => {
-  wordPanel.hidden = true;
-});
-
 // ========================= ホーム: 文章フォーム =========================
 const dueCountEl = document.getElementById('dueCount');
 const newSentenceBtn = document.getElementById('newSentenceBtn');
@@ -158,14 +147,11 @@ const categoryInput = document.getElementById('categoryInput');
 const extractBtn = document.getElementById('extractBtn');
 const cancelSentenceBtn = document.getElementById('cancelSentenceBtn');
 const extractResult = document.getElementById('extractResult');
-const phraseChips = document.getElementById('phraseChips');
 const wordChips = document.getElementById('wordChips');
-const phraseifyBtn = document.getElementById('phraseifyBtn');
 const saveSentenceBtn = document.getElementById('saveSentenceBtn');
 const recentSentences = document.getElementById('recentSentences');
 
-let pendingWords = []; // [{ source, selected }]
-let pendingPhrases = []; // [source, ...]
+let pendingWords = []; // [source, ...]
 
 newSentenceBtn.addEventListener('click', () => {
   resetSentenceForm();
@@ -183,7 +169,6 @@ function resetSentenceForm() {
   categoryInput.value = '';
   extractResult.hidden = true;
   pendingWords = [];
-  pendingPhrases = [];
 }
 
 extractBtn.addEventListener('click', () => {
@@ -192,41 +177,20 @@ extractBtn.addEventListener('click', () => {
     alert('原文を入力してください。');
     return;
   }
-  const { words, phrases } = extractFromSentence(text);
-  pendingWords = words.map((source) => ({ source, selected: false }));
-  pendingPhrases = [...phrases];
+  const { words } = extractFromSentence(text);
+  pendingWords = [...words];
   extractResult.hidden = false;
   renderChips();
 });
 
 function renderChips() {
-  phraseChips.innerHTML = '';
-  pendingPhrases.forEach((source, idx) => {
+  wordChips.innerHTML = '';
+  pendingWords.forEach((source, idx) => {
     const chip = document.createElement('span');
-    chip.className = 'chip chip-phrase';
+    chip.className = 'chip chip-word';
     chip.textContent = source;
     chip.title = 'タップで削除';
     chip.addEventListener('click', () => {
-      pendingPhrases.splice(idx, 1);
-      renderChips();
-    });
-    phraseChips.appendChild(chip);
-  });
-  if (pendingPhrases.length === 0) {
-    phraseChips.innerHTML = '<span class="hint">なし</span>';
-  }
-
-  wordChips.innerHTML = '';
-  pendingWords.forEach((w, idx) => {
-    const chip = document.createElement('span');
-    chip.className = `chip chip-word${w.selected ? ' selected' : ''}`;
-    chip.textContent = w.source;
-    chip.title = 'タップで選択 / 長押しで削除';
-    chip.addEventListener('click', () => {
-      w.selected = !w.selected;
-      renderChips();
-    });
-    chip.addEventListener('dblclick', () => {
       pendingWords.splice(idx, 1);
       renderChips();
     });
@@ -237,29 +201,15 @@ function renderChips() {
   }
 }
 
-phraseifyBtn.addEventListener('click', () => {
-  const selected = pendingWords.filter((w) => w.selected);
-  if (selected.length < 2) {
-    alert('2つ以上の単語を選択してください。');
-    return;
-  }
-  const phrase = selected.map((w) => w.source).join(' ');
-  pendingWords = pendingWords.filter((w) => !w.selected);
-  pendingPhrases.push(phrase);
-  renderChips();
-});
-
 saveSentenceBtn.addEventListener('click', () => {
   const source = sourceInput.value.trim();
   if (!source) return;
   const target = targetInput.value.trim();
   const category = categoryInput.value.trim();
-  const words = pendingWords.map((w) => w.source);
-  const phrases = [...pendingPhrases];
+  const words = [...pendingWords];
 
   words.forEach((w) => addVocabItem({ source: w, category, type: 'word' }));
-  phrases.forEach((p) => addVocabItem({ source: p, category, type: 'phrase' }));
-  addSentence({ source, target, category, words, phrases });
+  addSentence({ source, target, category, words });
 
   saveItems();
   sentenceForm.hidden = true;
@@ -283,11 +233,13 @@ function renderRecentSentences() {
 
     const meta = document.createElement('div');
     meta.className = 'sentence-meta';
-    const wordCount = (s.words || []).length + (s.phrases || []).length;
-    meta.textContent = `登録日: ${s.date} / カテゴリ: ${s.category || 'なし'} / 理解率: ${s.comprehension}% / 項目数: ${wordCount}`;
+    const wordCount = (s.words || []).length;
+    meta.textContent = `登録日: ${s.date} / カテゴリ: ${s.category || 'なし'} / 理解率: ${s.comprehension}% / 単語数: ${wordCount}`;
 
     const actions = document.createElement('div');
     actions.className = 'sentence-actions';
+
+    const speakBtn = makeSpeakButton(s.source, 'uk-UA');
 
     const editBtn = document.createElement('button');
     editBtn.textContent = '編集';
@@ -303,6 +255,7 @@ function renderRecentSentences() {
       refreshAll();
     });
 
+    actions.appendChild(speakBtn);
     actions.appendChild(editBtn);
     actions.appendChild(delBtn);
 
@@ -341,13 +294,11 @@ function openSentenceEditor(li, s) {
   reExtractBtn.className = 'small-btn';
   reExtractBtn.textContent = '再抽出';
   reExtractBtn.addEventListener('click', () => {
-    const { words, phrases } = extractFromSentence(srcInput.value.trim());
+    const { words } = extractFromSentence(srcInput.value.trim());
     s.words = words;
-    s.phrases = phrases;
     words.forEach((w) => addVocabItem({ source: w, category: catInput.value.trim(), type: 'word' }));
-    phrases.forEach((p) => addVocabItem({ source: p, category: catInput.value.trim(), type: 'phrase' }));
     saveItems();
-    alert('単語・フレーズを再抽出しました。');
+    alert('単語を再抽出しました。');
   });
 
   const saveBtn = document.createElement('button');
@@ -382,47 +333,22 @@ function updateDueCount() {
 
 // ========================= 単語帳タブ =========================
 const vocabSearch = document.getElementById('vocabSearch');
-const categoryFilter = document.getElementById('categoryFilter');
-const typeFilter = document.getElementById('typeFilter');
-const untranslatedFilter = document.getElementById('untranslatedFilter');
 const weakFilter = document.getElementById('weakFilter');
-const mergeBtn = document.getElementById('mergeBtn');
 const vocabList = document.getElementById('vocabList');
 
-let selectedForMerge = new Set();
-
-[vocabSearch, categoryFilter, typeFilter].forEach((el) => {
+[vocabSearch, weakFilter].forEach((el) => {
   el.addEventListener('input', renderVocabList);
   el.addEventListener('change', renderVocabList);
-});
-[untranslatedFilter, weakFilter].forEach((el) => {
-  el.addEventListener('change', renderVocabList);
-});
-
-mergeBtn.addEventListener('click', () => {
-  if (selectedForMerge.size < 2) {
-    alert('結合するには2つ以上選択してください。');
-    return;
-  }
-  mergeItems([...selectedForMerge]);
-  selectedForMerge = new Set();
-  refreshAll();
 });
 
 function renderVocabList() {
   const query = vocabSearch.value.trim().toLowerCase();
-  const category = categoryFilter.value.trim().toLowerCase();
-  const type = typeFilter.value;
-  const untranslatedOnly = untranslatedFilter.checked;
   const weakOnly = weakFilter.checked;
 
   vocabList.innerHTML = '';
   vocabItems().slice().reverse()
     .filter((it) => {
-      if (type && it.type !== type) return false;
       if (weakOnly && !it.weak) return false;
-      if (untranslatedOnly && itemStatus(it) === 'translated') return false;
-      if (category && (it.category || '').toLowerCase() !== category) return false;
       if (query && !(it.source.includes(query) || (it.target && it.target.toLowerCase().includes(query)))) return false;
       return true;
     })
@@ -436,30 +362,7 @@ function renderVocabList() {
 function renderVocabRow(item) {
   const li = document.createElement('li');
   li.className = 'vocab-item';
-
-  const status = itemStatus(item);
-  const today = todayStr();
   if (item.weak) li.classList.add('st-weak');
-  else if (status === 'untranslated') li.classList.add('st-unregistered');
-  else if (item.srs.dueDate <= today) li.classList.add('st-due');
-  else li.classList.add('st-registered');
-
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.checked = selectedForMerge.has(item.id);
-  checkbox.addEventListener('change', () => {
-    if (checkbox.checked) selectedForMerge.add(item.id);
-    else selectedForMerge.delete(item.id);
-  });
-
-  const typeBtn = document.createElement('button');
-  typeBtn.className = 'type-btn';
-  typeBtn.textContent = item.type === 'phrase' ? 'フレーズ' : '単語';
-  typeBtn.title = 'タップで単語/フレーズを切り替え';
-  typeBtn.addEventListener('click', () => {
-    setItemType(item.id, item.type === 'phrase' ? 'word' : 'phrase');
-    renderVocabList();
-  });
 
   const sourceInputEl = document.createElement('input');
   sourceInputEl.type = 'text';
@@ -472,7 +375,7 @@ function renderVocabRow(item) {
 
   const targetInputEl = document.createElement('input');
   targetInputEl.type = 'text';
-  targetInputEl.placeholder = '翻訳（未入力）';
+  targetInputEl.placeholder = '意味（未入力）';
   targetInputEl.className = 'vocab-target';
   targetInputEl.classList.toggle('empty-ja', !item.target);
   targetInputEl.value = item.target;
@@ -481,47 +384,24 @@ function renderVocabRow(item) {
     item.reviewFlag = false;
     targetInputEl.classList.toggle('empty-ja', !item.target);
     saveItems();
-    refreshDueAndStats();
-  });
-
-  const catInputEl = document.createElement('input');
-  catInputEl.type = 'text';
-  catInputEl.className = 'vocab-category';
-  catInputEl.placeholder = 'カテゴリ';
-  catInputEl.value = item.category || '';
-  catInputEl.setAttribute('list', 'categoryList');
-  catInputEl.addEventListener('change', () => {
-    item.category = catInputEl.value.trim();
-    saveItems();
-    refreshCategoryList();
-  });
-
-  const reviewBtn = document.createElement('button');
-  reviewBtn.className = `review-btn${item.reviewFlag ? ' active' : ''}`;
-  reviewBtn.textContent = '要確認';
-  reviewBtn.title = '要確認フラグを切り替え';
-  reviewBtn.addEventListener('click', () => {
-    item.reviewFlag = !item.reviewFlag;
-    saveItems();
-    renderVocabList();
+    updateDueCount();
   });
 
   const speakBtn = makeSpeakButton(item.source, 'uk-UA');
 
-  const actions = document.createElement('div');
-  actions.className = 'vocab-actions';
+  const weakBtn = document.createElement('button');
+  weakBtn.className = `review-btn${item.weak ? ' active' : ''}`;
+  weakBtn.textContent = item.weak ? '苦手' : '苦手にする';
+  weakBtn.title = '苦手フラグを切り替え';
+  weakBtn.addEventListener('click', () => {
+    item.weak = !item.weak;
+    saveItems();
+    renderVocabList();
+  });
 
-  if (item.type === 'phrase') {
-    const splitBtn = document.createElement('button');
-    splitBtn.className = 'small-btn';
-    splitBtn.textContent = '分割';
-    splitBtn.title = '単語に分割する';
-    splitBtn.addEventListener('click', () => {
-      splitItem(item.id);
-      refreshAll();
-    });
-    actions.appendChild(splitBtn);
-  }
+  const statsEl = document.createElement('span');
+  statsEl.className = 'vocab-stats';
+  statsEl.textContent = `正解 ${item.stats.correct} / 不正解 ${item.stats.incorrect}`;
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'delete-btn';
@@ -529,27 +409,23 @@ function renderVocabRow(item) {
   deleteBtn.title = '削除';
   deleteBtn.addEventListener('click', () => {
     removeItem(item.id);
-    selectedForMerge.delete(item.id);
     refreshAll();
   });
-  actions.appendChild(deleteBtn);
 
   const row1 = document.createElement('div');
   row1.className = 'vocab-row';
-  row1.appendChild(checkbox);
-  row1.appendChild(typeBtn);
   row1.appendChild(sourceInputEl);
   row1.appendChild(speakBtn);
+  row1.appendChild(deleteBtn);
 
   const row2 = document.createElement('div');
   row2.className = 'vocab-row';
   row2.appendChild(targetInputEl);
-  row2.appendChild(catInputEl);
 
   const row3 = document.createElement('div');
   row3.className = 'vocab-row';
-  row3.appendChild(reviewBtn);
-  row3.appendChild(actions);
+  row3.appendChild(weakBtn);
+  row3.appendChild(statsEl);
 
   li.appendChild(row1);
   li.appendChild(row2);
@@ -736,10 +612,6 @@ function finishTest() {
 }
 
 // ========================= Init =========================
-function refreshDueAndStats() {
-  updateDueCount();
-}
-
 function refreshAll() {
   refreshCategoryList();
   renderRecentSentences();

@@ -931,3 +931,9 @@ li.st-due .word-ua { color: #3498db; }
   gap: 6px;
   margin-left: auto;
 }
+
+.vocab-stats {
+  font-size: 12px;
+  color: #6fa8c9;
+  margin-left: auto;
+}

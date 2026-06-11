@@ -10,31 +10,9 @@ export function splitWords(text) {
   return [...new Set(matches.map((w) => w.toLowerCase()))];
 }
 
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// Detect known phrases inside a sentence, then split the remainder into words.
-// Processing order: 1) phrase detection 2) word splitting on what's left.
+// Split a sentence into its constituent words.
 export function extractFromSentence(text) {
-  let working = text.toLowerCase();
-  const knownPhrases = state.items
-    .filter((it) => it.type === 'phrase')
-    .map((it) => it.source)
-    .sort((a, b) => b.length - a.length); // longest first
-
-  const phrases = [];
-  knownPhrases.forEach((p) => {
-    if (!p) return;
-    const re = new RegExp('\\b' + escapeRegex(p) + '\\b', 'gi');
-    if (re.test(working)) {
-      phrases.push(p);
-      working = working.replace(re, ' ');
-    }
-  });
-
-  const words = splitWords(working);
-  return { words, phrases: [...new Set(phrases)] };
+  return { words: splitWords(text) };
 }
 
 export function findItem(source, type) {
@@ -63,16 +41,15 @@ export function addVocabItem({ source, target = '', reading = '', category = '',
   return item;
 }
 
-export function addSentence({ source, target = '', category = '', words = [], phrases = [] }) {
-  const all = [...words, ...phrases];
+export function addSentence({ source, target = '', category = '', words = [] }) {
   let known = 0;
-  all.forEach((s) => {
+  words.forEach((s) => {
     const v = findVocabItem(s);
     if (v && v.target) known += 1;
   });
-  const comprehension = all.length === 0 ? 0 : Math.round((known / all.length) * 100);
+  const comprehension = words.length === 0 ? 0 : Math.round((known / words.length) * 100);
 
-  const item = makeSentenceItem({ source, target, category, words, phrases, comprehension });
+  const item = makeSentenceItem({ source, target, category, words, phrases: [], comprehension });
   state.items.push(item);
   saveItems();
   return item;
@@ -81,38 +58,6 @@ export function addSentence({ source, target = '', category = '', words = [], ph
 export function removeItem(id) {
   state.items = state.items.filter((it) => it.id !== id);
   saveItems();
-}
-
-// Convert a word item into a phrase item (or vice versa).
-export function setItemType(id, type) {
-  const item = state.items.find((it) => it.id === id);
-  if (!item) return;
-  item.type = type;
-  saveItems();
-}
-
-// Merge several word/phrase items into a single phrase item.
-export function mergeItems(ids) {
-  const items = state.items.filter((it) => ids.includes(it.id));
-  if (items.length < 2) return null;
-  const source = items.map((it) => it.source).join(' ');
-  const target = items.map((it) => it.target).filter(Boolean).join(' ');
-  const merged = makeWordItem({ source, target, category: items[0].category, type: 'phrase' });
-  state.items = state.items.filter((it) => !ids.includes(it.id));
-  state.items.push(merged);
-  saveItems();
-  return merged;
-}
-
-// Split a phrase item back into separate word items.
-export function splitItem(id) {
-  const item = state.items.find((it) => it.id === id);
-  if (!item || item.type !== 'phrase') return [];
-  const parts = item.source.split(/\s+/).filter(Boolean);
-  state.items = state.items.filter((it) => it.id !== id);
-  const created = parts.map((p) => addVocabItem({ source: p, type: 'word' }));
-  saveItems();
-  return created;
 }
 
 // --- SRS (Anki-like) ---
