@@ -8,7 +8,7 @@ import {
   recordTestResult, vocabItems, sentenceItems,
 } from './words.js';
 import { makeSpeakButton } from './tts.js';
-import { t, setLang, getLang, applyStaticTranslations } from './i18n.js';
+import { t, setLang, getLang, applyStaticTranslations, CATEGORIES } from './i18n.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -22,19 +22,6 @@ tabButtons.forEach((btn) => {
     if (btn.dataset.tab === 'home') renderRecentSentences();
   });
 });
-
-// ========================= Category list =========================
-const categoryList = document.getElementById('categoryList');
-function refreshCategoryList() {
-  const cats = new Set();
-  state.items.forEach((it) => { if (it.category) cats.add(it.category); });
-  categoryList.innerHTML = '';
-  [...cats].sort().forEach((c) => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    categoryList.appendChild(opt);
-  });
-}
 
 // ========================= 設定モーダル =========================
 const settingsBtn = document.getElementById('settingsBtn');
@@ -181,7 +168,7 @@ cancelSentenceBtn.addEventListener('click', () => {
 function resetSentenceForm() {
   sourceInput.value = '';
   targetInput.value = '';
-  categoryInput.value = '';
+  categoryInput.selectedIndex = 0;
   extractResult.hidden = true;
   pendingWords = [];
 }
@@ -297,10 +284,14 @@ function openSentenceEditor(li, s) {
   tgtInput.value = s.target;
   tgtInput.rows = 2;
 
-  const catInput = document.createElement('input');
-  catInput.type = 'text';
-  catInput.value = s.category || '';
-  catInput.placeholder = t('categoryPlaceholder');
+  const catInput = document.createElement('select');
+  CATEGORIES.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = t(`cat${c[0].toUpperCase()}${c.slice(1)}`);
+    catInput.appendChild(opt);
+  });
+  catInput.value = s.category || CATEGORIES[0];
 
   const actions = document.createElement('div');
   actions.className = 'sentence-actions';
@@ -626,7 +617,6 @@ function finishTest() {
 
 // ========================= Init =========================
 function refreshAll() {
-  refreshCategoryList();
   renderRecentSentences();
   renderVocabList();
   updateDueCount();

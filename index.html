@@ -28,8 +28,14 @@
       <div id="sentenceForm" class="sentence-form" hidden>
         <textarea id="sourceInput" data-i18n-placeholder="sourcePlaceholder" placeholder="原文（ウクライナ語）" rows="2"></textarea>
         <textarea id="targetInput" data-i18n-placeholder="targetPlaceholder" placeholder="翻訳（日本語・任意）" rows="2"></textarea>
-        <input type="text" id="categoryInput" data-i18n-placeholder="categoryPlaceholder" placeholder="カテゴリ（任意）" list="categoryList">
-        <datalist id="categoryList"></datalist>
+        <select id="categoryInput">
+          <option value="greeting" data-i18n="catGreeting">挨拶</option>
+          <option value="daily" data-i18n="catDaily">日常会話</option>
+          <option value="work" data-i18n="catWork">大学・仕事</option>
+          <option value="travel" data-i18n="catTravel">旅行</option>
+          <option value="shopping" data-i18n="catShopping">買い物・食事</option>
+          <option value="other" data-i18n="catOther">その他</option>
+        </select>
 
         <div class="form-actions">
           <button id="extractBtn" type="button" data-i18n="extractBtn">単語を抽出</button>

@@ -328,6 +328,7 @@ h1 {
 #testMode,
 #testScope,
 #languageSelect,
+#categoryInput,
 #wordList select {
   padding: 8px;
   border: 1px solid #4a0e2e;
@@ -786,6 +787,7 @@ li.st-due .word-ua { color: #3498db; }
 
 .sentence-form textarea,
 .sentence-form input,
+.sentence-form select,
 #vocabSearch,
 #categoryFilter {
   width: 100%;

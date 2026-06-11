@@ -2,6 +2,8 @@
 
 export const LANGS = ['ja', 'en', 'uk'];
 
+export const CATEGORIES = ['greeting', 'daily', 'work', 'travel', 'shopping', 'other'];
+
 const dict = {
   ja: {
     appTitle: '📖 私たちの単語帳',
@@ -86,6 +88,12 @@ const dict = {
     languageLabel: '言語',
     speakTitle: '読み上げ',
     speakUnsupported: 'お使いのブラウザは音声読み上げに対応していません',
+    catGreeting: '挨拶',
+    catDaily: '日常会話',
+    catWork: '大学・仕事',
+    catTravel: '旅行',
+    catShopping: '買い物・食事',
+    catOther: 'その他',
   },
   en: {
     appTitle: '📖 My Vocabulary',
@@ -170,6 +178,12 @@ const dict = {
     languageLabel: 'Language',
     speakTitle: 'Play audio',
     speakUnsupported: 'Your browser does not support speech synthesis',
+    catGreeting: 'Greetings',
+    catDaily: 'Daily conversation',
+    catWork: 'University / Work',
+    catTravel: 'Travel',
+    catShopping: 'Shopping & Dining',
+    catOther: 'Other',
   },
   uk: {
     appTitle: '📖 Мій словник',
@@ -254,6 +268,12 @@ const dict = {
     languageLabel: 'Мова',
     speakTitle: 'Відтворити звук',
     speakUnsupported: 'Ваш браузер не підтримує синтез мовлення',
+    catGreeting: 'Привітання',
+    catDaily: 'Повсякденне спілкування',
+    catWork: 'Університет / Робота',
+    catTravel: 'Подорожі',
+    catShopping: 'Покупки та їжа',
+    catOther: 'Інше',
   },
 };
 
