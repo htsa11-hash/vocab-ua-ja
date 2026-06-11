@@ -518,6 +518,15 @@ li.st-due .word-ua { color: #3498db; }
   font-size: 13px;
 }
 
+.filter-row select {
+  padding: 8px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  background: #2d1b4e;
+  color: #87ceeb;
+  font-size: 13px;
+}
+
 .filter-row label {
   font-size: 12px;
   color: #6fa8c9;

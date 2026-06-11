@@ -113,6 +113,13 @@ function renderStats() {
     li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
     statsList.appendChild(li);
   });
+
+  CATEGORIES.forEach((cat) => {
+    const count = vocab.filter((it) => it.category === cat).length;
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${t(`cat${cat[0].toUpperCase()}${cat.slice(1)}`)}</span><strong>${count} ${t('statWordsUnit')}</strong>`;
+    statsList.appendChild(li);
+  });
 }
 
 exportBtn.addEventListener('click', () => {
@@ -152,6 +159,9 @@ const extractResult = document.getElementById('extractResult');
 const wordChips = document.getElementById('wordChips');
 const saveSentenceBtn = document.getElementById('saveSentenceBtn');
 const recentSentences = document.getElementById('recentSentences');
+const sentenceCategoryFilter = document.getElementById('sentenceCategoryFilter');
+
+sentenceCategoryFilter.addEventListener('change', renderRecentSentences);
 
 let pendingWords = []; // [source, ...]
 
@@ -221,7 +231,10 @@ saveSentenceBtn.addEventListener('click', () => {
 
 function renderRecentSentences() {
   recentSentences.innerHTML = '';
-  sentenceItems().slice().reverse().slice(0, 10).forEach((s) => {
+  const catFilter = sentenceCategoryFilter.value;
+  sentenceItems().slice().reverse()
+    .filter((s) => catFilter === 'all' || s.category === catFilter)
+    .slice(0, 10).forEach((s) => {
     const li = document.createElement('li');
     li.className = 'sentence-item';
 
@@ -268,7 +281,7 @@ function renderRecentSentences() {
     recentSentences.appendChild(li);
   });
 
-  if (sentenceItems().length === 0) {
+  if (recentSentences.children.length === 0) {
     recentSentences.innerHTML = `<li class="hint">${t('emptySentences')}</li>`;
   }
 }
@@ -340,9 +353,10 @@ function updateDueCount() {
 // ========================= 単語帳タブ =========================
 const vocabSearch = document.getElementById('vocabSearch');
 const weakFilter = document.getElementById('weakFilter');
+const vocabCategoryFilter = document.getElementById('vocabCategoryFilter');
 const vocabList = document.getElementById('vocabList');
 
-[vocabSearch, weakFilter].forEach((el) => {
+[vocabSearch, weakFilter, vocabCategoryFilter].forEach((el) => {
   el.addEventListener('input', renderVocabList);
   el.addEventListener('change', renderVocabList);
 });
@@ -350,11 +364,13 @@ const vocabList = document.getElementById('vocabList');
 function renderVocabList() {
   const query = vocabSearch.value.trim().toLowerCase();
   const weakOnly = weakFilter.checked;
+  const catFilter = vocabCategoryFilter.value;
 
   vocabList.innerHTML = '';
   vocabItems().slice().reverse()
     .filter((it) => {
       if (weakOnly && !it.weak) return false;
+      if (catFilter !== 'all' && it.category !== catFilter) return false;
       if (query && !(it.source.includes(query) || (it.target && it.target.toLowerCase().includes(query)))) return false;
       return true;
     })
@@ -444,6 +460,7 @@ const testSetup = document.getElementById('testSetup');
 const testDirection = document.getElementById('testDirection');
 const testMode = document.getElementById('testMode');
 const testScope = document.getElementById('testScope');
+const testCategory = document.getElementById('testCategory');
 const startTestBtn = document.getElementById('startTestBtn');
 const testArea = document.getElementById('testArea');
 const testProgress = document.getElementById('testProgress');
@@ -469,6 +486,7 @@ startTestBtn.addEventListener('click', () => {
   let pool = vocabItems().filter((it) => it.source && it.target);
   if (testScope.value === 'weak') pool = pool.filter((it) => it.weak);
   if (testScope.value === 'due') pool = pool.filter((it) => it.srs.dueDate <= todayStr());
+  if (testCategory.value !== 'all') pool = pool.filter((it) => it.category === testCategory.value);
   if (pool.length === 0) {
     alert(t('noTestItemsAlert'));
     return;

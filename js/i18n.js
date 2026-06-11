@@ -98,6 +98,10 @@ const dict = {
     catTravel: '旅行',
     catShopping: '買い物・食事',
     catOther: 'その他',
+    filterAll: '全て',
+    filterAllCategories: '全カテゴリ',
+    categoryLabel: 'カテゴリ',
+    statWordsUnit: '単語',
   },
   en: {
     appTitle: '📖 My Vocabulary',
@@ -188,6 +192,10 @@ const dict = {
     catTravel: 'Travel',
     catShopping: 'Shopping & Dining',
     catOther: 'Other',
+    filterAll: 'All',
+    filterAllCategories: 'All categories',
+    categoryLabel: 'Category',
+    statWordsUnit: 'words',
   },
   uk: {
     appTitle: '📖 Мій словник',
@@ -278,6 +286,10 @@ const dict = {
     catTravel: 'Подорожі',
     catShopping: 'Покупки та їжа',
     catOther: 'Інше',
+    filterAll: 'Усі',
+    filterAllCategories: 'Усі категорії',
+    categoryLabel: 'Категорія',
+    statWordsUnit: 'слів',
   },
 };
 
