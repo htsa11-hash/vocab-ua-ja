@@ -1,14 +1,13 @@
 import {
-  state, saveSentences, saveWords, saveSettings, makeId, todayStr,
-  exportData, importData, bumpTodayLearned, bumpStreak,
+  state, saveItems, exportData, importData, todayStr,
+  bumpTodayLearned, bumpStreak, itemStatus,
 } from './storage.js';
-import { translateText, translateWords, detectLang } from './translate.js';
 import {
-  splitWords, findWord, addWord, removeWord, dueWords, applyRating,
-  isCorrectAnswer, recordTestResult, comprehensionStats,
+  extractFromSentence, addVocabItem, addSentence, removeItem, setItemType,
+  mergeItems, splitItem, dueWords, applyRating, isCorrectAnswer,
+  recordTestResult, vocabItems, sentenceItems, findVocabItem,
 } from './words.js';
-import { makeSpeakButton, speak, ttsSupported } from './tts.js';
-import { generateExamples } from './examples.js';
+import { makeSpeakButton, ttsSupported } from './tts.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -18,487 +17,515 @@ tabButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
     tabButtons.forEach((b) => b.classList.toggle('active', b === btn));
     tabContents.forEach((c) => c.classList.toggle('active', c.id === `${btn.dataset.tab}Tab`));
-    if (btn.dataset.tab === 'study') pickNextCard();
-    if (btn.dataset.tab === 'words') renderWordList();
-    if (btn.dataset.tab === 'settings') renderStats();
+    if (btn.dataset.tab === 'vocab') renderVocabList();
+    if (btn.dataset.tab === 'home') renderRecentSentences();
   });
 });
 
-// ========================= Word status / colors =========================
-// green = registered, red = unregistered, orange = weak, blue = review due
-function wordStatusInfo(ua) {
-  const w = findWord(ua);
-  if (!w || !w.ja) return { cls: 'st-unregistered', label: '未登録' };
-  if (w.weak) return { cls: 'st-weak', label: '苦手' };
-  if (w.srs.dueDate <= todayStr()) return { cls: 'st-due', label: '復習期限' };
-  return { cls: 'st-registered', label: '登録済み' };
+// ========================= Category list =========================
+const categoryList = document.getElementById('categoryList');
+function refreshCategoryList() {
+  const cats = new Set();
+  state.items.forEach((it) => { if (it.category) cats.add(it.category); });
+  categoryList.innerHTML = '';
+  [...cats].sort().forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    categoryList.appendChild(opt);
+  });
 }
 
-// ========================= Word tap panel =========================
+// ========================= 設定モーダル =========================
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const statsList = document.getElementById('statsList');
+const exportBtn = document.getElementById('exportBtn');
+const importFile = document.getElementById('importFile');
+
+settingsBtn.addEventListener('click', () => {
+  renderStats();
+  settingsModal.hidden = false;
+});
+closeSettingsBtn.addEventListener('click', () => { settingsModal.hidden = true; });
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) settingsModal.hidden = true;
+});
+
+function renderStats() {
+  const vocab = vocabItems();
+  const total = vocab.length;
+  const totalWords = vocab.filter((it) => it.type === 'word').length;
+  const totalPhrases = vocab.filter((it) => it.type === 'phrase').length;
+  const weak = vocab.filter((it) => it.weak).length;
+  const due = dueWords().length;
+  const totalCorrect = vocab.reduce((s, it) => s + it.stats.correct, 0);
+  const totalIncorrect = vocab.reduce((s, it) => s + it.stats.incorrect, 0);
+  const accuracy = (totalCorrect + totalIncorrect) === 0 ? 0 : Math.round((totalCorrect / (totalCorrect + totalIncorrect)) * 100);
+
+  const items = [
+    ['総単語数', totalWords],
+    ['総フレーズ数', totalPhrases],
+    ['苦手単語数', weak],
+    ['復習待ち件数', due],
+    ['正答率', `${accuracy}%`],
+    ['連続学習日数', `${state.settings.streak} 日`],
+    ['登録項目合計', total],
+  ];
+
+  statsList.innerHTML = '';
+  items.forEach(([label, value]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    statsList.appendChild(li);
+  });
+}
+
+exportBtn.addEventListener('click', () => {
+  const blob = new Blob([exportData()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `vocab-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+importFile.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    importData(text);
+    refreshAll();
+    alert('インポートが完了しました。');
+  } catch (err) {
+    alert('インポートに失敗しました: ' + err.message);
+  }
+  importFile.value = '';
+});
+
+// ========================= 単語タップ用パネル =========================
 const wordPanel = document.getElementById('wordPanel');
 const wordPanelContent = document.getElementById('wordPanelContent');
 document.getElementById('wordPanelClose').addEventListener('click', () => {
   wordPanel.hidden = true;
 });
 
-function openWordPanel(ua, ja, reading) {
-  const existing = findWord(ua);
-  wordPanelContent.innerHTML = '';
+// ========================= ホーム: 文章フォーム =========================
+const dueCountEl = document.getElementById('dueCount');
+const newSentenceBtn = document.getElementById('newSentenceBtn');
+const sentenceForm = document.getElementById('sentenceForm');
+const sourceInput = document.getElementById('sourceInput');
+const targetInput = document.getElementById('targetInput');
+const categoryInput = document.getElementById('categoryInput');
+const extractBtn = document.getElementById('extractBtn');
+const cancelSentenceBtn = document.getElementById('cancelSentenceBtn');
+const extractResult = document.getElementById('extractResult');
+const phraseChips = document.getElementById('phraseChips');
+const wordChips = document.getElementById('wordChips');
+const phraseifyBtn = document.getElementById('phraseifyBtn');
+const saveSentenceBtn = document.getElementById('saveSentenceBtn');
+const recentSentences = document.getElementById('recentSentences');
 
-  const title = document.createElement('div');
-  title.className = 'word-panel-title';
-  title.textContent = ua;
-  wordPanelContent.appendChild(title);
-  wordPanelContent.appendChild(makeSpeakButton(ua, 'uk-UA'));
+let pendingWords = []; // [{ source, selected }]
+let pendingPhrases = []; // [source, ...]
 
-  const transRow = document.createElement('div');
-  transRow.textContent = `翻訳: ${ja || existing?.ja || '(未翻訳)'}`;
-  wordPanelContent.appendChild(transRow);
+newSentenceBtn.addEventListener('click', () => {
+  resetSentenceForm();
+  sentenceForm.hidden = !sentenceForm.hidden;
+});
 
-  const readRow = document.createElement('div');
-  readRow.textContent = `読み: ${reading || existing?.reading || '(未設定)'}`;
-  wordPanelContent.appendChild(readRow);
+cancelSentenceBtn.addEventListener('click', () => {
+  sentenceForm.hidden = true;
+  resetSentenceForm();
+});
 
-  const exampleWord = existing || { ua, ja: ja || existing?.ja || '', examples: [] };
-  const examples = generateExamples(exampleWord, 1);
-  const exRow = document.createElement('div');
-  exRow.className = 'word-panel-example';
-  exRow.textContent = `例文: ${examples[0].ua} / ${examples[0].ja}`;
-  wordPanelContent.appendChild(exRow);
-
-  const statusRow = document.createElement('div');
-  statusRow.className = 'word-panel-status';
-  if (existing && existing.ja) {
-    statusRow.textContent = '✅ 登録済み';
-  } else {
-    statusRow.textContent = '未登録';
-    const addBtn = document.createElement('button');
-    addBtn.textContent = '単語帳に追加';
-    addBtn.addEventListener('click', () => {
-      addWord({ ua, ja: ja || '', reading: reading || '' });
-      wordPanel.hidden = true;
-      renderSentenceWordTable(currentSentenceWords, currentSentenceTranslations);
-    });
-    statusRow.appendChild(addBtn);
-  }
-  wordPanelContent.appendChild(statusRow);
-
-  wordPanel.hidden = false;
+function resetSentenceForm() {
+  sourceInput.value = '';
+  targetInput.value = '';
+  categoryInput.value = '';
+  extractResult.hidden = true;
+  pendingWords = [];
+  pendingPhrases = [];
 }
 
-// ========================= 文章タブ =========================
-const sentenceForm = document.getElementById('sentenceForm');
-const sentenceInput = document.getElementById('sentenceInput');
-const sentenceLang = document.getElementById('sentenceLang');
-const sentenceResult = document.getElementById('sentenceResult');
-const sentenceOriginal = document.getElementById('sentenceOriginal');
-const sentenceTranslation = document.getElementById('sentenceTranslation');
-const speakSentenceBtnHolder = document.getElementById('speakSentenceBtn');
-const comprehensionEl = document.getElementById('comprehension');
-const dedupeToggle = document.getElementById('dedupeToggle');
-const wordTableBody = document.getElementById('wordTableBody');
-const bulkAddBtn = document.getElementById('bulkAddBtn');
-const saveSentenceBtn = document.getElementById('saveSentenceBtn');
-const sentenceList = document.getElementById('sentenceList');
-
-let currentSentenceWords = [];      // ua words from the current sentence
-let currentSentenceTranslations = {}; // ua -> { ja, reading }
-let currentSentenceUa = '';
-let currentSentenceJa = '';
-let currentSourceLang = 'uk';
-
-sentenceForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const text = sentenceInput.value.trim();
-  if (!text) return;
-
-  const langChoice = sentenceLang.value;
-  const source = langChoice === 'auto' ? detectLang(text) : langChoice;
-  const target = source === 'uk' ? 'ja' : 'uk';
-  currentSourceLang = source;
-
-  sentenceOriginal.textContent = text;
-  sentenceTranslation.textContent = '翻訳中...';
-  sentenceResult.hidden = false;
-  speakSentenceBtnHolder.hidden = source !== 'uk' || !ttsSupported;
-
-  const translated = await translateText(text, source, target);
-  if (translated === null) {
-    sentenceTranslation.textContent = '⚠ 翻訳に失敗しました（オフラインまたはAPI制限）。手動で確認してください。';
-  } else {
-    sentenceTranslation.textContent = translated;
-  }
-
-  if (source === 'uk') {
-    currentSentenceUa = text;
-    currentSentenceJa = translated || '';
-  } else {
-    currentSentenceUa = translated || '';
-    currentSentenceJa = text;
-  }
-
-  // Word splitting only makes sense for Ukrainian text.
-  const uaText = source === 'uk' ? text : (translated || '');
-  currentSentenceWords = splitWords(uaText);
-  currentSentenceTranslations = {};
-
-  if (currentSentenceWords.length === 0) {
-    wordTableBody.innerHTML = '<tr><td colspan="4">単語が見つかりませんでした</td></tr>';
-    updateComprehension();
+extractBtn.addEventListener('click', () => {
+  const text = sourceInput.value.trim();
+  if (!text) {
+    alert('原文を入力してください。');
     return;
   }
+  const { words, phrases } = extractFromSentence(text);
+  pendingWords = words.map((source) => ({ source, selected: false }));
+  pendingPhrases = [...phrases];
+  extractResult.hidden = false;
+  renderChips();
+});
 
-  wordTableBody.innerHTML = '<tr><td colspan="4">単語を翻訳中...</td></tr>';
-
-  // Use already-known translations where possible, only call API for the rest.
-  const toTranslate = [];
-  currentSentenceWords.forEach((ua) => {
-    const known = findWord(ua);
-    if (known && known.ja) {
-      currentSentenceTranslations[ua] = { ja: known.ja, reading: known.reading };
-    } else {
-      toTranslate.push(ua);
-    }
-  });
-
-  if (toTranslate.length > 0) {
-    const translations = await translateWords(toTranslate, 'uk', 'ja');
-    toTranslate.forEach((ua, i) => {
-      currentSentenceTranslations[ua] = { ja: translations[i] || '', reading: '' };
+function renderChips() {
+  phraseChips.innerHTML = '';
+  pendingPhrases.forEach((source, idx) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip chip-phrase';
+    chip.textContent = source;
+    chip.title = 'タップで削除';
+    chip.addEventListener('click', () => {
+      pendingPhrases.splice(idx, 1);
+      renderChips();
     });
+    phraseChips.appendChild(chip);
+  });
+  if (pendingPhrases.length === 0) {
+    phraseChips.innerHTML = '<span class="hint">なし</span>';
   }
 
-  renderSentenceWordTable(currentSentenceWords, currentSentenceTranslations);
-  updateComprehension();
-});
-
-function updateComprehension() {
-  const stats = comprehensionStats(currentSentenceWords, { dedupe: dedupeToggle.checked });
-  comprehensionEl.innerHTML = `
-    総単語数: ${stats.total} /
-    登録済み: ${stats.known} /
-    未登録: ${stats.unknown} /
-    苦手: ${stats.weak} /
-    理解率: <strong>${stats.rate}%</strong>
-  `;
-}
-dedupeToggle.addEventListener('change', updateComprehension);
-
-function renderSentenceWordTable(uaWords, translations) {
-  wordTableBody.innerHTML = '';
-  uaWords.forEach((ua) => {
-    const info = translations[ua] || { ja: '', reading: '' };
-    const status = wordStatusInfo(ua);
-
-    const tr = document.createElement('tr');
-    tr.className = status.cls;
-
-    const tdWord = document.createElement('td');
-    tdWord.textContent = ua;
-    tdWord.className = 'tap-word';
-    tdWord.title = `タップして詳細表示 (${status.label})`;
-    tdWord.addEventListener('click', () => openWordPanel(ua, info.ja, info.reading));
-
-    const badge = document.createElement('span');
-    badge.className = `status-dot ${status.cls}`;
-    badge.title = status.label;
-    tdWord.appendChild(badge);
-
-    const tdJa = document.createElement('td');
-    tdJa.textContent = info.ja || '-';
-
-    const tdReading = document.createElement('td');
-    tdReading.textContent = info.reading || '-';
-
-    const tdAction = document.createElement('td');
-    const existing = findWord(ua);
-    if (existing && existing.ja) {
-      tdAction.textContent = '✅';
-    } else {
-      const addBtn = document.createElement('button');
-      addBtn.textContent = '追加';
-      addBtn.addEventListener('click', () => {
-        addWord({ ua, ja: info.ja, reading: info.reading });
-        renderSentenceWordTable(uaWords, translations);
-        updateComprehension();
-      });
-      tdAction.appendChild(addBtn);
-    }
-
-    tr.appendChild(tdWord);
-    tr.appendChild(tdJa);
-    tr.appendChild(tdReading);
-    tr.appendChild(tdAction);
-    wordTableBody.appendChild(tr);
+  wordChips.innerHTML = '';
+  pendingWords.forEach((w, idx) => {
+    const chip = document.createElement('span');
+    chip.className = `chip chip-word${w.selected ? ' selected' : ''}`;
+    chip.textContent = w.source;
+    chip.title = 'タップで選択 / 長押しで削除';
+    chip.addEventListener('click', () => {
+      w.selected = !w.selected;
+      renderChips();
+    });
+    chip.addEventListener('dblclick', () => {
+      pendingWords.splice(idx, 1);
+      renderChips();
+    });
+    wordChips.appendChild(chip);
   });
+  if (pendingWords.length === 0) {
+    wordChips.innerHTML = '<span class="hint">なし</span>';
+  }
 }
 
-speakSentenceBtnHolder.addEventListener('click', () => {
-  speak(currentSentenceUa, 'uk-UA');
-});
-
-bulkAddBtn.addEventListener('click', () => {
-  currentSentenceWords.forEach((ua) => {
-    const existing = findWord(ua);
-    if (!existing || !existing.ja) {
-      const info = currentSentenceTranslations[ua] || { ja: '', reading: '' };
-      addWord({ ua, ja: info.ja, reading: info.reading });
-    }
-  });
-  renderSentenceWordTable(currentSentenceWords, currentSentenceTranslations);
-  updateComprehension();
+phraseifyBtn.addEventListener('click', () => {
+  const selected = pendingWords.filter((w) => w.selected);
+  if (selected.length < 2) {
+    alert('2つ以上の単語を選択してください。');
+    return;
+  }
+  const phrase = selected.map((w) => w.source).join(' ');
+  pendingWords = pendingWords.filter((w) => !w.selected);
+  pendingPhrases.push(phrase);
+  renderChips();
 });
 
 saveSentenceBtn.addEventListener('click', () => {
-  if (!currentSentenceUa) return;
-  const stats = comprehensionStats(currentSentenceWords, { dedupe: dedupeToggle.checked });
-  state.sentences.push({
-    id: makeId(),
-    ua: currentSentenceUa,
-    ja: currentSentenceJa,
-    words: currentSentenceWords,
-    date: todayStr(),
-    comprehension: stats.rate,
-  });
-  saveSentences();
-  renderSentenceList();
+  const source = sourceInput.value.trim();
+  if (!source) return;
+  const target = targetInput.value.trim();
+  const category = categoryInput.value.trim();
+  const words = pendingWords.map((w) => w.source);
+  const phrases = [...pendingPhrases];
+
+  words.forEach((w) => addVocabItem({ source: w, category, type: 'word' }));
+  phrases.forEach((p) => addVocabItem({ source: p, category, type: 'phrase' }));
+  addSentence({ source, target, category, words, phrases });
+
+  saveItems();
+  sentenceForm.hidden = true;
+  resetSentenceForm();
+  refreshAll();
 });
 
-function renderSentenceList() {
-  sentenceList.innerHTML = '';
-  state.sentences.slice().reverse().forEach((s) => {
+function renderRecentSentences() {
+  recentSentences.innerHTML = '';
+  sentenceItems().slice().reverse().slice(0, 10).forEach((s) => {
     const li = document.createElement('li');
+    li.className = 'sentence-item';
 
-    const ua = document.createElement('div');
-    ua.className = 'sentence-ua';
-    ua.textContent = s.ua;
+    const src = document.createElement('div');
+    src.className = 'sentence-ua';
+    src.textContent = s.source;
 
-    const ja = document.createElement('div');
-    ja.className = 'sentence-ja';
-    ja.textContent = s.ja;
+    const tgt = document.createElement('div');
+    tgt.className = 'sentence-ja';
+    tgt.textContent = s.target || '(翻訳未入力)';
 
     const meta = document.createElement('div');
     meta.className = 'sentence-meta';
-    meta.textContent = `登録日: ${s.date} / 理解率: ${s.comprehension}% / 単語数: ${s.words.length}`;
+    const wordCount = (s.words || []).length + (s.phrases || []).length;
+    meta.textContent = `登録日: ${s.date} / カテゴリ: ${s.category || 'なし'} / 理解率: ${s.comprehension}% / 項目数: ${wordCount}`;
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.title = '削除';
-    deleteBtn.addEventListener('click', () => {
-      state.sentences = state.sentences.filter((x) => x.id !== s.id);
-      saveSentences();
-      renderSentenceList();
+    const actions = document.createElement('div');
+    actions.className = 'sentence-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '編集';
+    editBtn.className = 'small-btn';
+    editBtn.addEventListener('click', () => openSentenceEditor(li, s));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.textContent = '🗑️';
+    delBtn.title = '削除';
+    delBtn.addEventListener('click', () => {
+      removeItem(s.id);
+      refreshAll();
     });
 
-    li.appendChild(ua);
-    li.appendChild(ja);
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    li.appendChild(src);
+    li.appendChild(tgt);
     li.appendChild(meta);
-    li.appendChild(deleteBtn);
-    sentenceList.appendChild(li);
+    li.appendChild(actions);
+    recentSentences.appendChild(li);
   });
+
+  if (sentenceItems().length === 0) {
+    recentSentences.innerHTML = '<li class="hint">まだ文章が登録されていません。「＋ 新しい文章を追加」から始めましょう。</li>';
+  }
 }
 
-// ========================= 単語一覧タブ =========================
-const wordForm = document.getElementById('wordForm');
-const wordUaInput = document.getElementById('wordUaInput');
-const wordJaInput = document.getElementById('wordJaInput');
-const wordReadingInput = document.getElementById('wordReadingInput');
-const wordCategoryInput = document.getElementById('wordCategoryInput');
-const wordList = document.getElementById('wordList');
-const wordSearch = document.getElementById('wordSearch');
-const categoryFilter = document.getElementById('categoryFilter');
-const weakFilter = document.getElementById('weakFilter');
-const dueCountEl = document.getElementById('dueCount');
+function openSentenceEditor(li, s) {
+  li.innerHTML = '';
 
-wordForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const ua = wordUaInput.value.trim();
-  const ja = wordJaInput.value.trim();
-  const reading = wordReadingInput.value.trim();
-  const category = wordCategoryInput.value;
-  if (!ua) return;
+  const srcInput = document.createElement('textarea');
+  srcInput.value = s.source;
+  srcInput.rows = 2;
 
-  addWord({ ua, ja, reading, category });
+  const tgtInput = document.createElement('textarea');
+  tgtInput.value = s.target;
+  tgtInput.rows = 2;
 
-  wordUaInput.value = '';
-  wordJaInput.value = '';
-  wordReadingInput.value = '';
-  renderWordList();
-  updateDueCount();
-});
+  const catInput = document.createElement('input');
+  catInput.type = 'text';
+  catInput.value = s.category || '';
+  catInput.placeholder = 'カテゴリ';
 
-[wordSearch, categoryFilter, weakFilter].forEach((el) => {
-  el.addEventListener('input', renderWordList);
-  el.addEventListener('change', renderWordList);
-});
+  const actions = document.createElement('div');
+  actions.className = 'sentence-actions';
 
-function renderWordList() {
-  const query = wordSearch.value.trim().toLowerCase();
-  const category = categoryFilter.value;
-  const weakOnly = weakFilter.checked;
+  const reExtractBtn = document.createElement('button');
+  reExtractBtn.className = 'small-btn';
+  reExtractBtn.textContent = '再抽出';
+  reExtractBtn.addEventListener('click', () => {
+    const { words, phrases } = extractFromSentence(srcInput.value.trim());
+    s.words = words;
+    s.phrases = phrases;
+    words.forEach((w) => addVocabItem({ source: w, category: catInput.value.trim(), type: 'word' }));
+    phrases.forEach((p) => addVocabItem({ source: p, category: catInput.value.trim(), type: 'phrase' }));
+    saveItems();
+    alert('単語・フレーズを再抽出しました。');
+  });
 
-  wordList.innerHTML = '';
-  state.words.slice().reverse()
-    .filter((w) => {
-      if (weakOnly && !w.weak) return false;
-      if (category === 'none' && w.category) return false;
-      if (category !== '' && category !== 'none' && w.category !== category) return false;
-      if (query && !(w.ua.includes(query) || (w.ja && w.ja.toLowerCase().includes(query)))) return false;
-      return true;
-    })
-    .forEach((word) => {
-      const li = document.createElement('li');
-      const status = wordStatusInfo(word.ua);
-      li.classList.add(status.cls);
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'small-btn primary-btn';
+  saveBtn.textContent = '保存';
+  saveBtn.addEventListener('click', () => {
+    s.source = srcInput.value.trim();
+    s.target = tgtInput.value.trim();
+    s.category = catInput.value.trim();
+    saveItems();
+    refreshAll();
+  });
 
-      const dot = document.createElement('span');
-      dot.className = `status-dot ${status.cls}`;
-      dot.title = status.label;
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'small-btn ghost-btn';
+  cancelBtn.textContent = 'キャンセル';
+  cancelBtn.addEventListener('click', () => renderRecentSentences());
 
-      const uaSpan = document.createElement('span');
-      uaSpan.className = 'word-ua';
-      uaSpan.textContent = word.ua;
+  actions.appendChild(reExtractBtn);
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
 
-      const jaInput = document.createElement('input');
-      jaInput.type = 'text';
-      jaInput.placeholder = '日本語訳';
-      jaInput.value = word.ja;
-      jaInput.classList.toggle('empty-ja', !word.ja);
-      jaInput.addEventListener('change', () => {
-        word.ja = jaInput.value.trim();
-        jaInput.classList.toggle('empty-ja', !word.ja);
-        saveWordsAndRefresh();
-      });
-
-      const readingInput = document.createElement('input');
-      readingInput.type = 'text';
-      readingInput.placeholder = '読み';
-      readingInput.value = word.reading;
-      readingInput.addEventListener('change', () => {
-        word.reading = readingInput.value.trim();
-        saveWordsAndRefresh();
-      });
-
-      const catSelect = document.createElement('select');
-      ['', 'A1', 'A2', 'B1', '日常会話', '旅行', 'ニュース', '学校'].forEach((c) => {
-        const opt = document.createElement('option');
-        opt.value = c;
-        opt.textContent = c || '(なし)';
-        if (word.category === c) opt.selected = true;
-        catSelect.appendChild(opt);
-      });
-      catSelect.addEventListener('change', () => {
-        word.category = catSelect.value;
-        saveWordsAndRefresh();
-      });
-
-      const speakBtn = makeSpeakButton(word.ua, 'uk-UA');
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.textContent = '🗑️';
-      deleteBtn.title = '削除';
-      deleteBtn.addEventListener('click', () => {
-        removeWord(word.id);
-        renderWordList();
-        updateDueCount();
-      });
-
-      li.appendChild(dot);
-      li.appendChild(uaSpan);
-      li.appendChild(speakBtn);
-      li.appendChild(jaInput);
-      li.appendChild(readingInput);
-      li.appendChild(catSelect);
-      li.appendChild(deleteBtn);
-      wordList.appendChild(li);
-    });
-}
-
-function saveWordsAndRefresh() {
-  saveWords();
-  updateDueCount();
+  li.appendChild(srcInput);
+  li.appendChild(tgtInput);
+  li.appendChild(catInput);
+  li.appendChild(actions);
 }
 
 function updateDueCount() {
   dueCountEl.textContent = dueWords().length;
 }
 
-// ========================= 学習タブ (SRS) =========================
-const dirButtons = document.querySelectorAll('.dir-btn');
-const flashcard = document.getElementById('flashcard');
-const cardFront = document.getElementById('cardFront');
-const cardBack = document.getElementById('cardBack');
-const studyEmpty = document.getElementById('studyEmpty');
-const ratingButtons = document.getElementById('ratingButtons');
-const studyHint = document.querySelector('#studyTab .hint');
+// ========================= 単語帳タブ =========================
+const vocabSearch = document.getElementById('vocabSearch');
+const categoryFilter = document.getElementById('categoryFilter');
+const typeFilter = document.getElementById('typeFilter');
+const untranslatedFilter = document.getElementById('untranslatedFilter');
+const weakFilter = document.getElementById('weakFilter');
+const mergeBtn = document.getElementById('mergeBtn');
+const vocabList = document.getElementById('vocabList');
 
-let direction = 'ua-ja';
-let currentWord = null;
-let isFlipped = false;
+let selectedForMerge = new Set();
 
-dirButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    direction = btn.dataset.dir;
-    dirButtons.forEach((b) => b.classList.toggle('active', b === btn));
-    pickNextCard();
-  });
+[vocabSearch, categoryFilter, typeFilter].forEach((el) => {
+  el.addEventListener('input', renderVocabList);
+  el.addEventListener('change', renderVocabList);
+});
+[untranslatedFilter, weakFilter].forEach((el) => {
+  el.addEventListener('change', renderVocabList);
 });
 
-function pickNextCard() {
-  const due = dueWords();
-  isFlipped = false;
-  flashcard.classList.remove('flipped');
-
-  if (due.length === 0) {
-    currentWord = null;
-    flashcard.hidden = true;
-    studyHint.hidden = true;
-    ratingButtons.hidden = true;
-    studyEmpty.hidden = false;
+mergeBtn.addEventListener('click', () => {
+  if (selectedForMerge.size < 2) {
+    alert('結合するには2つ以上選択してください。');
     return;
   }
+  mergeItems([...selectedForMerge]);
+  selectedForMerge = new Set();
+  refreshAll();
+});
 
-  flashcard.hidden = false;
-  studyHint.hidden = false;
-  studyEmpty.hidden = true;
-  ratingButtons.hidden = true;
+function renderVocabList() {
+  const query = vocabSearch.value.trim().toLowerCase();
+  const category = categoryFilter.value.trim().toLowerCase();
+  const type = typeFilter.value;
+  const untranslatedOnly = untranslatedFilter.checked;
+  const weakOnly = weakFilter.checked;
 
-  currentWord = due[Math.floor(Math.random() * due.length)];
-  if (direction === 'ua-ja') {
-    cardFront.textContent = currentWord.ua;
-    cardBack.textContent = currentWord.ja;
-  } else {
-    cardFront.textContent = currentWord.ja;
-    cardBack.textContent = currentWord.ua;
+  vocabList.innerHTML = '';
+  vocabItems().slice().reverse()
+    .filter((it) => {
+      if (type && it.type !== type) return false;
+      if (weakOnly && !it.weak) return false;
+      if (untranslatedOnly && itemStatus(it) === 'translated') return false;
+      if (category && (it.category || '').toLowerCase() !== category) return false;
+      if (query && !(it.source.includes(query) || (it.target && it.target.toLowerCase().includes(query)))) return false;
+      return true;
+    })
+    .forEach((item) => vocabList.appendChild(renderVocabRow(item)));
+
+  if (vocabList.children.length === 0) {
+    vocabList.innerHTML = '<li class="hint">該当する項目がありません。</li>';
   }
 }
 
-flashcard.addEventListener('click', () => {
-  if (!currentWord) return;
-  isFlipped = !isFlipped;
-  flashcard.classList.toggle('flipped', isFlipped);
-  ratingButtons.hidden = !isFlipped;
-});
+function renderVocabRow(item) {
+  const li = document.createElement('li');
+  li.className = 'vocab-item';
 
-ratingButtons.addEventListener('click', (e) => {
-  const btn = e.target.closest('.rating-btn');
-  if (!btn || !currentWord) return;
+  const status = itemStatus(item);
+  const today = todayStr();
+  if (item.weak) li.classList.add('st-weak');
+  else if (status === 'untranslated') li.classList.add('st-unregistered');
+  else if (item.srs.dueDate <= today) li.classList.add('st-due');
+  else li.classList.add('st-registered');
 
-  applyRating(currentWord, btn.dataset.rating);
-  if (btn.dataset.rating === 'good' || btn.dataset.rating === 'easy') {
-    bumpTodayLearned(1);
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = selectedForMerge.has(item.id);
+  checkbox.addEventListener('change', () => {
+    if (checkbox.checked) selectedForMerge.add(item.id);
+    else selectedForMerge.delete(item.id);
+  });
+
+  const typeBtn = document.createElement('button');
+  typeBtn.className = 'type-btn';
+  typeBtn.textContent = item.type === 'phrase' ? 'フレーズ' : '単語';
+  typeBtn.title = 'タップで単語/フレーズを切り替え';
+  typeBtn.addEventListener('click', () => {
+    setItemType(item.id, item.type === 'phrase' ? 'word' : 'phrase');
+    renderVocabList();
+  });
+
+  const sourceInputEl = document.createElement('input');
+  sourceInputEl.type = 'text';
+  sourceInputEl.className = 'vocab-source';
+  sourceInputEl.value = item.source;
+  sourceInputEl.addEventListener('change', () => {
+    item.source = sourceInputEl.value.trim().toLowerCase();
+    saveItems();
+  });
+
+  const targetInputEl = document.createElement('input');
+  targetInputEl.type = 'text';
+  targetInputEl.placeholder = '翻訳（未入力）';
+  targetInputEl.className = 'vocab-target';
+  targetInputEl.classList.toggle('empty-ja', !item.target);
+  targetInputEl.value = item.target;
+  targetInputEl.addEventListener('change', () => {
+    item.target = targetInputEl.value.trim();
+    item.reviewFlag = false;
+    targetInputEl.classList.toggle('empty-ja', !item.target);
+    saveItems();
+    refreshDueAndStats();
+  });
+
+  const catInputEl = document.createElement('input');
+  catInputEl.type = 'text';
+  catInputEl.className = 'vocab-category';
+  catInputEl.placeholder = 'カテゴリ';
+  catInputEl.value = item.category || '';
+  catInputEl.setAttribute('list', 'categoryList');
+  catInputEl.addEventListener('change', () => {
+    item.category = catInputEl.value.trim();
+    saveItems();
+    refreshCategoryList();
+  });
+
+  const reviewBtn = document.createElement('button');
+  reviewBtn.className = `review-btn${item.reviewFlag ? ' active' : ''}`;
+  reviewBtn.textContent = '要確認';
+  reviewBtn.title = '要確認フラグを切り替え';
+  reviewBtn.addEventListener('click', () => {
+    item.reviewFlag = !item.reviewFlag;
+    saveItems();
+    renderVocabList();
+  });
+
+  const speakBtn = makeSpeakButton(item.source, 'uk-UA');
+
+  const actions = document.createElement('div');
+  actions.className = 'vocab-actions';
+
+  if (item.type === 'phrase') {
+    const splitBtn = document.createElement('button');
+    splitBtn.className = 'small-btn';
+    splitBtn.textContent = '分割';
+    splitBtn.title = '単語に分割する';
+    splitBtn.addEventListener('click', () => {
+      splitItem(item.id);
+      refreshAll();
+    });
+    actions.appendChild(splitBtn);
   }
-  bumpStreak();
-  updateDueCount();
-  pickNextCard();
-});
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'delete-btn';
+  deleteBtn.textContent = '🗑️';
+  deleteBtn.title = '削除';
+  deleteBtn.addEventListener('click', () => {
+    removeItem(item.id);
+    selectedForMerge.delete(item.id);
+    refreshAll();
+  });
+  actions.appendChild(deleteBtn);
+
+  const row1 = document.createElement('div');
+  row1.className = 'vocab-row';
+  row1.appendChild(checkbox);
+  row1.appendChild(typeBtn);
+  row1.appendChild(sourceInputEl);
+  row1.appendChild(speakBtn);
+
+  const row2 = document.createElement('div');
+  row2.className = 'vocab-row';
+  row2.appendChild(targetInputEl);
+  row2.appendChild(catInputEl);
+
+  const row3 = document.createElement('div');
+  row3.className = 'vocab-row';
+  row3.appendChild(reviewBtn);
+  row3.appendChild(actions);
+
+  li.appendChild(row1);
+  li.appendChild(row2);
+  li.appendChild(row3);
+  return li;
+}
 
 // ========================= テストタブ =========================
 const testSetup = document.getElementById('testSetup');
 const testDirection = document.getElementById('testDirection');
 const testMode = document.getElementById('testMode');
+const testTypeScope = document.getElementById('testTypeScope');
 const testScope = document.getElementById('testScope');
 const startTestBtn = document.getElementById('startTestBtn');
 const testArea = document.getElementById('testArea');
@@ -522,10 +549,12 @@ let testCorrectCount = 0;
 let testQuestionDir = 'ua-ja';
 
 startTestBtn.addEventListener('click', () => {
-  let pool = state.words.filter((w) => w.ua && w.ja);
-  if (testScope.value === 'weak') pool = pool.filter((w) => w.weak);
+  let pool = vocabItems().filter((it) => it.source && it.target);
+  if (testTypeScope.value) pool = pool.filter((it) => it.type === testTypeScope.value);
+  if (testScope.value === 'weak') pool = pool.filter((it) => it.weak);
+  if (testScope.value === 'due') pool = pool.filter((it) => it.srs.dueDate <= todayStr());
   if (pool.length === 0) {
-    alert('対象となる単語がありません。');
+    alert('対象となる項目がありません。');
     return;
   }
   testQueue = shuffle(pool).slice(0, Math.min(pool.length, 20));
@@ -566,12 +595,12 @@ function showTestQuestion() {
     return;
   }
 
-  const word = testQueue[testIndex];
+  const item = testQueue[testIndex];
   testQuestionDir = currentDirection();
   testProgress.textContent = `第 ${testIndex + 1} / ${testQueue.length} 問`;
 
-  const prompt = testQuestionDir === 'ua-ja' ? word.ua : word.ja;
-  const answer = testQuestionDir === 'ua-ja' ? word.ja : word.ua;
+  const prompt = testQuestionDir === 'ua-ja' ? item.source : item.target;
+  const answer = testQuestionDir === 'ua-ja' ? item.target : item.source;
   testQuestion.textContent = prompt;
 
   if (testMode.value === 'input') {
@@ -581,16 +610,16 @@ function showTestQuestion() {
   } else if (testMode.value === 'choice') {
     testChoices.hidden = false;
     testChoices.innerHTML = '';
-    const others = shuffle(state.words.filter((w) => w.id !== word.id))
+    const others = shuffle(vocabItems().filter((w) => w.id !== item.id && w.target))
       .slice(0, 3)
-      .map((w) => (testQuestionDir === 'ua-ja' ? w.ja : w.ua))
+      .map((w) => (testQuestionDir === 'ua-ja' ? w.target : w.source))
       .filter(Boolean);
     const choices = shuffle([answer, ...others]);
     choices.forEach((choice) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
       btn.textContent = choice;
-      btn.addEventListener('click', () => gradeAnswer(word, choice === answer, choice, answer));
+      btn.addEventListener('click', () => gradeAnswer(item, choice === answer, choice, answer));
       testChoices.appendChild(btn);
     });
   } else { // card
@@ -607,23 +636,28 @@ testCard.addEventListener('click', () => {
 
 testInputForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const word = testQueue[testIndex];
+  const item = testQueue[testIndex];
   const answer = testInputForm.dataset.answer;
   const userAnswer = testAnswerInput.value.trim();
-  gradeAnswer(word, isCorrectAnswer(userAnswer, answer), userAnswer, answer);
+  gradeAnswer(item, isCorrectAnswer(userAnswer, answer), userAnswer, answer);
 });
 
 testCardButtons.addEventListener('click', (e) => {
   const btn = e.target.closest('.rating-btn');
   if (!btn) return;
-  const word = testQueue[testIndex];
-  const correct = btn.dataset.correct === 'true';
-  gradeAnswer(word, correct, null, null);
+  const item = testQueue[testIndex];
+  const rating = btn.dataset.rating;
+  const correct = rating !== 'again';
+  gradeAnswer(item, correct, null, null, rating);
 });
 
-function gradeAnswer(word, correct, userAnswer, expected) {
-  recordTestResult(word, correct);
-  if (correct) testCorrectCount += 1;
+function gradeAnswer(item, correct, userAnswer, expected, rating) {
+  recordTestResult(item, correct);
+  applyRating(item, rating || (correct ? 'good' : 'again'));
+  if (correct) {
+    testCorrectCount += 1;
+    bumpTodayLearned(1);
+  }
 
   testInputForm.hidden = true;
   testChoices.hidden = true;
@@ -636,7 +670,7 @@ function gradeAnswer(word, correct, userAnswer, expected) {
       ? '✅ 正解！'
       : `❌ 不正解。正解: ${expected}（あなたの回答: ${userAnswer || '(空欄)'}）`;
   } else {
-    testFeedback.textContent = correct ? '✅ 正解！' : '❌ 不正解。苦手単語に登録しました。';
+    testFeedback.textContent = correct ? '✅ 正解！' : '❌ 覚えていない、として記録しました。';
   }
 
   nextQuestionBtn.hidden = false;
@@ -665,69 +699,16 @@ function finishTest() {
   bumpStreak();
 }
 
-// ========================= 設定タブ =========================
-const statsList = document.getElementById('statsList');
-const exportBtn = document.getElementById('exportBtn');
-const importFile = document.getElementById('importFile');
-
-function renderStats() {
-  const total = state.words.length;
-  const today = todayStr();
-  const todayAdded = state.settings.todayAdded.date === today ? state.settings.todayAdded.count : 0;
-  const todayLearned = state.settings.todayLearned.date === today ? state.settings.todayLearned.count : 0;
-  const due = dueWords().length;
-  const weak = state.words.filter((w) => w.weak).length;
-  const totalCorrect = state.words.reduce((s, w) => s + w.stats.correct, 0);
-  const totalIncorrect = state.words.reduce((s, w) => s + w.stats.incorrect, 0);
-  const accuracy = (totalCorrect + totalIncorrect) === 0 ? 0 : Math.round((totalCorrect / (totalCorrect + totalIncorrect)) * 100);
-
-  const items = [
-    ['総単語数', total],
-    ['今日追加した単語数', todayAdded],
-    ['今日覚えた単語数', todayLearned],
-    ['復習待ち単語数', due],
-    ['苦手単語数', weak],
-    ['正答率', `${accuracy}%`],
-    ['連続学習日数', `${state.settings.streak} 日`],
-  ];
-
-  statsList.innerHTML = '';
-  items.forEach(([label, value]) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-    statsList.appendChild(li);
-  });
+// ========================= Init =========================
+function refreshDueAndStats() {
+  updateDueCount();
 }
 
-exportBtn.addEventListener('click', () => {
-  const blob = new Blob([exportData()], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `vocab-backup-${todayStr()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
+function refreshAll() {
+  refreshCategoryList();
+  renderRecentSentences();
+  renderVocabList();
+  updateDueCount();
+}
 
-importFile.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  try {
-    importData(text);
-    renderWordList();
-    renderSentenceList();
-    updateDueCount();
-    renderStats();
-    alert('インポートが完了しました。');
-  } catch (err) {
-    alert('インポートに失敗しました: ' + err.message);
-  }
-  importFile.value = '';
-});
-
-// ========================= Init =========================
-renderSentenceList();
-renderWordList();
-updateDueCount();
-renderStats();
+refreshAll();

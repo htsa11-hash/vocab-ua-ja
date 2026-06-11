@@ -27,30 +27,15 @@ function save(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-export const state = {
-  words: load('vocabWords', []),
-  sentences: load('vocabSentences', []),
-  settings: load('vocabSettings', {
+function defaultSettings() {
+  return {
     lastStudyDate: null,
     streak: 0,
     todayAdded: { date: todayStr(), count: 0 },
     todayLearned: { date: todayStr(), count: 0 },
-  }),
-};
-
-export function saveWords() {
-  save('vocabWords', state.words);
+  };
 }
 
-export function saveSentences() {
-  save('vocabSentences', state.sentences);
-}
-
-export function saveSettings() {
-  save('vocabSettings', state.settings);
-}
-
-// --- Default factories ---
 export function defaultSrs() {
   return { interval: 0, ease: 2.5, reps: 0, dueDate: todayStr(), status: 'new' };
 }
@@ -59,32 +44,106 @@ export function defaultStats() {
   return { correct: 0, incorrect: 0, lastChecked: null, addedDate: todayStr() };
 }
 
-export function makeWord({ ua, ja = '', reading = '', category = '' }) {
+// --- Migration from the old { words, sentences } shape to a single items array ---
+function migrateOldData() {
+  const oldWords = load('vocabWords', null);
+  const oldSentences = load('vocabSentences', null);
+  if (!oldWords && !oldSentences) return null;
+
+  const items = [];
+  (oldWords || []).forEach((w) => {
+    items.push({
+      id: w.id || makeId(),
+      type: 'word',
+      source: w.ua || '',
+      target: w.ja || '',
+      reading: w.reading || '',
+      category: w.category || '',
+      reviewFlag: false,
+      date: w.stats?.addedDate || todayStr(),
+      weak: !!w.weak,
+      srs: w.srs || defaultSrs(),
+      stats: w.stats || defaultStats(),
+    });
+  });
+  (oldSentences || []).forEach((s) => {
+    items.push({
+      id: s.id || makeId(),
+      type: 'sentence',
+      source: s.ua || '',
+      target: s.ja || '',
+      category: s.category || '',
+      date: s.date || todayStr(),
+      words: s.words || [],
+      phrases: [],
+      comprehension: s.comprehension || 0,
+    });
+  });
+
+  localStorage.removeItem('vocabWords');
+  localStorage.removeItem('vocabSentences');
+  return items;
+}
+
+export const state = {
+  items: load('vocabItems', null) || migrateOldData() || [],
+  settings: load('vocabSettings', defaultSettings()),
+};
+
+export function saveItems() {
+  save('vocabItems', state.items);
+}
+
+export function saveSettings() {
+  save('vocabSettings', state.settings);
+}
+
+// --- Item factories ---
+export function makeWordItem({ source, target = '', reading = '', category = '', type = 'word' }) {
   return {
     id: makeId(),
-    ua: ua.toLowerCase(),
-    ja,
+    type, // 'word' | 'phrase'
+    source: source.trim().toLowerCase(),
+    target,
     reading,
     category,
-    examples: [],
+    reviewFlag: false,
+    date: todayStr(),
     weak: false,
     srs: defaultSrs(),
     stats: defaultStats(),
   };
 }
 
+export function makeSentenceItem({ source, target = '', category = '', words = [], phrases = [], comprehension = 0 }) {
+  return {
+    id: makeId(),
+    type: 'sentence',
+    source,
+    target,
+    category,
+    date: todayStr(),
+    words,
+    phrases,
+    comprehension,
+  };
+}
+
+export function itemStatus(item) {
+  if (item.reviewFlag) return 'needs_review';
+  return item.target && item.target.trim() ? 'translated' : 'untranslated';
+}
+
 // --- Export / Import ---
 export function exportData() {
-  return JSON.stringify({ words: state.words, sentences: state.sentences, settings: state.settings }, null, 2);
+  return JSON.stringify({ items: state.items, settings: state.settings }, null, 2);
 }
 
 export function importData(json) {
   const data = JSON.parse(json);
-  if (Array.isArray(data.words)) state.words = data.words;
-  if (Array.isArray(data.sentences)) state.sentences = data.sentences;
+  if (Array.isArray(data.items)) state.items = data.items;
   if (data.settings) state.settings = data.settings;
-  saveWords();
-  saveSentences();
+  saveItems();
   saveSettings();
 }
 

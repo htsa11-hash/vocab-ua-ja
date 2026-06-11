@@ -10,12 +10,12 @@ const TEMPLATES = [
 ];
 
 // Generate (or return cached) example sentences for a word.
-export function generateExamples(word, count = 1) {
+export function generateExamples(item, count = 1) {
   const examples = [];
   for (let i = 0; i < count; i++) {
-    const t = TEMPLATES[(word.examples.length + i) % TEMPLATES.length];
-    const ja = word.ja || word.ua;
-    examples.push({ ua: t.ua(word.ua), ja: t.ja(ja) });
+    const t = TEMPLATES[i % TEMPLATES.length];
+    const ja = item.target || item.source;
+    examples.push({ ua: t.ua(item.source), ja: t.ja(ja) });
   }
   return examples;
 }

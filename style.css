@@ -661,3 +661,269 @@ li.st-due .word-ua { color: #3498db; }
 }
 
 #wordList .word-panel-example { font-size: 12px; }
+
+/* ===================== Topbar / Settings modal ===================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.topbar h1 { margin-bottom: 0; }
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-content {
+  background: #1a1226;
+  border: 1px solid #87ceeb;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  text-align: left;
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #87ceeb;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* ===================== Buttons ===================== */
+.primary-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid #87ceeb;
+  color: #87ceeb;
+}
+
+.small-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.form-actions button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.form-actions .ghost-btn {
+  background: transparent;
+  border: 1px solid #87ceeb;
+  color: #87ceeb;
+}
+
+/* ===================== Sentence form / extraction ===================== */
+.sentence-form {
+  background: #2d1b4e;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.sentence-form textarea,
+.sentence-form input,
+#vocabSearch,
+#categoryFilter {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #1a1226;
+  color: #87ceeb;
+  margin-bottom: 8px;
+  resize: vertical;
+}
+
+.extract-result h4 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: #87ceeb;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 16px;
+  background: #1a1226;
+  border: 1px solid #4a0e2e;
+  font-size: 13px;
+  cursor: pointer;
+  color: #87ceeb;
+}
+
+.chip-phrase {
+  border-color: #2ecc71;
+  color: #2ecc71;
+}
+
+.chip-word.selected {
+  background: #87ceeb;
+  color: #1a1226;
+  border-color: #87ceeb;
+}
+
+/* ===================== Sentence list (home) ===================== */
+.sentence-item {
+  padding: 12px;
+  border-radius: 8px;
+  background: #2d1b4e;
+  margin-bottom: 8px;
+}
+
+.sentence-item textarea,
+.sentence-item input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  background: #1a1226;
+  color: #87ceeb;
+  font-size: 13px;
+  margin-bottom: 6px;
+  resize: vertical;
+}
+
+.sentence-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ===================== Vocab tab ===================== */
+.vocab-item {
+  background: #2d1b4e;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-left: 4px solid transparent;
+}
+
+.vocab-item.st-registered { border-left-color: #2ecc71; }
+.vocab-item.st-unregistered { border-left-color: #e74c3c; }
+.vocab-item.st-weak { border-left-color: #e67e22; }
+.vocab-item.st-due { border-left-color: #3498db; }
+
+.vocab-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vocab-row input[type="text"] {
+  flex: 1;
+  min-width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #4a0e2e;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #1a1226;
+  color: #87ceeb;
+}
+
+.vocab-row input.empty-ja {
+  border-color: #c0392b;
+  background: #3a1020;
+}
+
+.type-btn {
+  padding: 4px 8px;
+  border: 1px solid #87ceeb;
+  background: transparent;
+  color: #87ceeb;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review-btn {
+  padding: 4px 8px;
+  border: 1px solid #6fa8c9;
+  background: transparent;
+  color: #6fa8c9;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.review-btn.active {
+  background: #e67e22;
+  border-color: #e67e22;
+  color: #1a1226;
+  font-weight: bold;
+}
+
+.vocab-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
