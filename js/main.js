@@ -44,17 +44,30 @@ const exportBtn = document.getElementById('exportBtn');
 const importFile = document.getElementById('importFile');
 
 function openSettings() {
+  console.log('[settings] open() called');
   renderStats();
   settingsModal.hidden = false;
+  console.log('[settings] after open, hidden =', settingsModal.hidden, 'in DOM:', document.body.contains(settingsModal));
 }
 
 function closeSettings() {
+  console.log('[settings] close() called');
   settingsModal.hidden = true;
+  console.log('[settings] after close, hidden =', settingsModal.hidden,
+    'computed display =', getComputedStyle(settingsModal).display);
 }
 
-settingsBtn.addEventListener('click', openSettings);
-closeSettingsBtn.addEventListener('click', closeSettings);
+console.log('[settings] settingsBtn:', settingsBtn, 'closeSettingsBtn:', closeSettingsBtn, 'settingsModal:', settingsModal);
+
+settingsBtn.addEventListener('click', () => { console.log('[settings] settingsBtn click'); openSettings(); });
+closeSettingsBtn.addEventListener('click', (e) => {
+  console.log('[settings] closeSettingsBtn click', e.target);
+  e.preventDefault();
+  e.stopPropagation();
+  closeSettings();
+});
 settingsModal.addEventListener('click', (e) => {
+  console.log('[settings] modal backdrop click, target =', e.target, 'is modal itself:', e.target === settingsModal);
   if (e.target === settingsModal) closeSettings();
 });
 
