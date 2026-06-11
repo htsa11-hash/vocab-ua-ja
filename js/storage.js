@@ -87,6 +87,43 @@ function migrateOldData() {
   return items;
 }
 
+// Convert previously-saved single-word "sentences" into word items.
+// (Single-word input is now registered directly as a word, but earlier
+// saves before that fix may have stored them as sentence items.)
+function splitWordsBasic(text) {
+  const matches = (text || '').match(/[\p{L}\p{M}'’ʼ-]+/gu) || [];
+  return matches;
+}
+
+function migrateSingleWordSentences(items) {
+  const result = [];
+  items.forEach((it) => {
+    if (it.type === 'sentence' && splitWordsBasic(it.source).length <= 1) {
+      const key = (it.source || '').trim().toLowerCase();
+      const existing = result.find((r) => (r.type === 'word' || r.type === 'phrase') && r.source === key);
+      if (existing) {
+        if (it.target && !existing.target) existing.target = it.target;
+        return; // drop the sentence duplicate
+      }
+      result.push({
+        id: it.id || makeId(),
+        type: 'word',
+        source: key,
+        target: it.target || '',
+        reading: '',
+        reviewFlag: false,
+        date: it.date || todayStr(),
+        weak: false,
+        srs: defaultSrs(),
+        stats: defaultStats(),
+      });
+      return;
+    }
+    result.push(it);
+  });
+  return result;
+}
+
 function normalizeItemCategories(items) {
   items.forEach((it) => {
     if (it.type === 'sentence') {
@@ -106,7 +143,7 @@ function normalizeItemCategories(items) {
 }
 
 export const state = {
-  items: normalizeItemCategories(load('vocabItems', null) || migrateOldData() || []),
+  items: normalizeItemCategories(migrateSingleWordSentences(load('vocabItems', null) || migrateOldData() || [])),
   settings: load('vocabSettings', defaultSettings()),
 };
 
@@ -165,7 +202,7 @@ export function exportData() {
 // Returns a summary { sentencesAdded, wordsAdded, duplicates }.
 export function importData(json) {
   const data = JSON.parse(json);
-  const incoming = Array.isArray(data.items) ? normalizeItemCategories(data.items) : [];
+  const incoming = Array.isArray(data.items) ? normalizeItemCategories(migrateSingleWordSentences(data.items)) : [];
 
   const existingKeys = new Set(state.items.map((it) => `${it.type === 'phrase' ? 'word' : it.type}:${it.source.trim().toLowerCase()}`));
 
