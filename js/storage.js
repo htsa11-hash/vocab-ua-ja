@@ -91,8 +91,15 @@ function normalizeItemCategories(items) {
   items.forEach((it) => {
     if (it.type === 'sentence') {
       it.category = normalizeCategory(it.category);
+      if (!Array.isArray(it.words)) it.words = [];
     } else {
       delete it.category;
+      if (!it.srs) it.srs = defaultSrs();
+      if (!it.stats) it.stats = defaultStats();
+      if (typeof it.weak !== 'boolean') it.weak = false;
+      if (typeof it.reviewFlag !== 'boolean') it.reviewFlag = false;
+      if (typeof it.target !== 'string') it.target = '';
+      if (typeof it.source !== 'string') it.source = '';
     }
   });
   return items;

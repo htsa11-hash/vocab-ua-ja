@@ -125,7 +125,7 @@ function renderStats() {
 }
 
 exportBtn.addEventListener('click', () => {
-  const blob = new Blob([exportData()], { type: 'application/json' });
+  const blob = new Blob([exportData()], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -356,6 +356,7 @@ function updateDueCount() {
 const vocabSearch = document.getElementById('vocabSearch');
 const weakFilter = document.getElementById('weakFilter');
 const vocabList = document.getElementById('vocabList');
+const vocabDebugCount = document.getElementById('vocabDebugCount');
 
 [vocabSearch, weakFilter].forEach((el) => {
   el.addEventListener('input', renderVocabList);
@@ -366,14 +367,23 @@ function renderVocabList() {
   const query = vocabSearch.value.trim().toLowerCase();
   const weakOnly = weakFilter.checked;
 
+  const all = vocabItems();
+  vocabDebugCount.textContent = `[debug] Words loaded: ${all.length}`;
+
   vocabList.innerHTML = '';
-  vocabItems().slice().reverse()
+  all.slice().reverse()
     .filter((it) => {
       if (weakOnly && !it.weak) return false;
       if (query && !(it.source.includes(query) || (it.target && it.target.toLowerCase().includes(query)))) return false;
       return true;
     })
-    .forEach((item) => vocabList.appendChild(renderVocabRow(item)));
+    .forEach((item) => {
+      try {
+        vocabList.appendChild(renderVocabRow(item));
+      } catch (err) {
+        console.error('[vocab] failed to render item', item, err);
+      }
+    });
 
   if (vocabList.children.length === 0) {
     vocabList.innerHTML = `<li class="hint">${t('emptyVocab')}</li>`;
