@@ -139,9 +139,9 @@ importFile.addEventListener('change', async (e) => {
   if (!file) return;
   const text = await file.text();
   try {
-    importData(text);
+    const summary = importData(text);
     refreshAll();
-    alert(t('importSuccess'));
+    alert(t('importSummary', summary));
   } catch (err) {
     alert(t('importFailPrefix') + err.message);
   }

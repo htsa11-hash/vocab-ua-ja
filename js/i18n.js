@@ -2,7 +2,7 @@
 
 export const LANGS = ['ja', 'en', 'uk'];
 
-export const CATEGORIES = ['greeting', 'daily', 'work', 'travel', 'shopping', 'other'];
+export const CATEGORIES = ['greeting', 'daily', 'study', 'travel', 'shopping', 'other'];
 
 export function normalizeCategory(cat) {
   return CATEGORIES.includes(cat) ? cat : 'other';
@@ -88,13 +88,14 @@ const dict = {
     importLabel: 'JSONインポート',
     exportHint: 'エクスポートしたファイルを保管しておくと、別の端末やブラウザでもデータを復元できます。',
     importSuccess: 'インポートが完了しました。',
+    importSummary: 'インポート完了\n追加した文章: {sentencesAdded}\n追加した単語: {wordsAdded}\nスキップした重複: {duplicates}',
     importFailPrefix: 'インポートに失敗しました: ',
     languageLabel: '言語',
     speakTitle: '読み上げ',
     speakUnsupported: 'お使いのブラウザは音声読み上げに対応していません',
     catGreeting: '挨拶',
     catDaily: '日常会話',
-    catWork: '大学・仕事',
+    catStudy: '大学・仕事',
     catTravel: '旅行',
     catShopping: '買い物・食事',
     catOther: 'その他',
@@ -182,13 +183,14 @@ const dict = {
     importLabel: 'Import JSON',
     exportHint: 'Keep the exported file to restore your data on another device or browser.',
     importSuccess: 'Import complete.',
+    importSummary: 'Import complete\nSentences added: {sentencesAdded}\nWords added: {wordsAdded}\nDuplicates skipped: {duplicates}',
     importFailPrefix: 'Import failed: ',
     languageLabel: 'Language',
     speakTitle: 'Play audio',
     speakUnsupported: 'Your browser does not support speech synthesis',
     catGreeting: 'Greetings',
     catDaily: 'Daily conversation',
-    catWork: 'University / Work',
+    catStudy: 'University / Work',
     catTravel: 'Travel',
     catShopping: 'Shopping & Dining',
     catOther: 'Other',
@@ -276,13 +278,14 @@ const dict = {
     importLabel: 'Імпорт JSON',
     exportHint: 'Збережіть експортований файл, щоб відновити дані на іншому пристрої чи в браузері.',
     importSuccess: 'Імпорт завершено.',
+    importSummary: 'Імпорт завершено\nДодано речень: {sentencesAdded}\nДодано слів: {wordsAdded}\nПропущено дублікатів: {duplicates}',
     importFailPrefix: 'Помилка імпорту: ',
     languageLabel: 'Мова',
     speakTitle: 'Відтворити звук',
     speakUnsupported: 'Ваш браузер не підтримує синтез мовлення',
     catGreeting: 'Привітання',
     catDaily: 'Повсякденне спілкування',
-    catWork: 'Університет / Робота',
+    catStudy: 'Університет / Робота',
     catTravel: 'Подорожі',
     catShopping: 'Покупки та їжа',
     catOther: 'Інше',

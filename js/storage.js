@@ -160,12 +160,34 @@ export function exportData() {
   return JSON.stringify({ items: state.items, settings: state.settings }, null, 2);
 }
 
+// Merge imported items into existing state. Never overwrites existing
+// sentences/words/SRS/stats. Duplicates (same type + source) are skipped.
+// Returns a summary { sentencesAdded, wordsAdded, duplicates }.
 export function importData(json) {
   const data = JSON.parse(json);
-  if (Array.isArray(data.items)) state.items = normalizeItemCategories(data.items);
-  if (data.settings) state.settings = data.settings;
+  const incoming = Array.isArray(data.items) ? normalizeItemCategories(data.items) : [];
+
+  const existingKeys = new Set(state.items.map((it) => `${it.type === 'phrase' ? 'word' : it.type}:${it.source.trim().toLowerCase()}`));
+
+  let sentencesAdded = 0;
+  let wordsAdded = 0;
+  let duplicates = 0;
+
+  incoming.forEach((it) => {
+    if (it.type !== 'sentence' && it.type !== 'word' && it.type !== 'phrase') return;
+    const key = `${it.type === 'phrase' ? 'word' : it.type}:${(it.source || '').trim().toLowerCase()}`;
+    if (existingKeys.has(key)) {
+      duplicates += 1;
+      return;
+    }
+    existingKeys.add(key);
+    state.items.push(it);
+    if (it.type === 'sentence') sentencesAdded += 1;
+    else wordsAdded += 1;
+  });
+
   saveItems();
-  saveSettings();
+  return { sentencesAdded, wordsAdded, duplicates };
 }
 
 // --- Daily counters ---
