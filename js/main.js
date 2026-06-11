@@ -8,7 +8,7 @@ import {
   recordTestResult, vocabItems, sentenceItems,
 } from './words.js';
 import { makeSpeakButton } from './tts.js';
-import { t, setLang, getLang, applyStaticTranslations, CATEGORIES } from './i18n.js';
+import { t, setLang, getLang, applyStaticTranslations, CATEGORIES, normalizeCategory } from './i18n.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -313,7 +313,7 @@ function openSentenceEditor(li, s) {
   saveBtn.addEventListener('click', () => {
     s.source = srcInput.value.trim();
     s.target = tgtInput.value.trim();
-    s.category = catInput.value.trim();
+    s.category = normalizeCategory(catInput.value.trim());
     saveItems();
     refreshAll();
   });

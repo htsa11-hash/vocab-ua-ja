@@ -4,6 +4,10 @@ export const LANGS = ['ja', 'en', 'uk'];
 
 export const CATEGORIES = ['greeting', 'daily', 'work', 'travel', 'shopping', 'other'];
 
+export function normalizeCategory(cat) {
+  return CATEGORIES.includes(cat) ? cat : 'other';
+}
+
 const dict = {
   ja: {
     appTitle: '📖 私たちの単語帳',

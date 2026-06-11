@@ -1,5 +1,7 @@
 // --- Generic helpers & persistent state ---
 
+import { normalizeCategory } from './i18n.js';
+
 export function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -59,7 +61,7 @@ function migrateOldData() {
       source: w.ua || '',
       target: w.ja || '',
       reading: w.reading || '',
-      category: w.category || '',
+      category: normalizeCategory(w.category),
       reviewFlag: false,
       date: w.stats?.addedDate || todayStr(),
       weak: !!w.weak,
@@ -73,7 +75,7 @@ function migrateOldData() {
       type: 'sentence',
       source: s.ua || '',
       target: s.ja || '',
-      category: s.category || '',
+      category: normalizeCategory(s.category),
       date: s.date || todayStr(),
       words: s.words || [],
       phrases: [],
@@ -86,10 +88,17 @@ function migrateOldData() {
   return items;
 }
 
+function normalizeItemCategories(items) {
+  items.forEach((it) => { it.category = normalizeCategory(it.category); });
+  return items;
+}
+
 export const state = {
-  items: load('vocabItems', null) || migrateOldData() || [],
+  items: normalizeItemCategories(load('vocabItems', null) || migrateOldData() || []),
   settings: load('vocabSettings', defaultSettings()),
 };
+
+save('vocabItems', state.items);
 
 export function saveItems() {
   save('vocabItems', state.items);
@@ -107,7 +116,7 @@ export function makeWordItem({ source, target = '', reading = '', category = '',
     source: source.trim().toLowerCase(),
     target,
     reading,
-    category,
+    category: normalizeCategory(category),
     reviewFlag: false,
     date: todayStr(),
     weak: false,
@@ -122,7 +131,7 @@ export function makeSentenceItem({ source, target = '', category = '', words = [
     type: 'sentence',
     source,
     target,
-    category,
+    category: normalizeCategory(category),
     date: todayStr(),
     words,
     phrases,
@@ -142,7 +151,7 @@ export function exportData() {
 
 export function importData(json) {
   const data = JSON.parse(json);
-  if (Array.isArray(data.items)) state.items = data.items;
+  if (Array.isArray(data.items)) state.items = normalizeItemCategories(data.items);
   if (data.settings) state.settings = data.settings;
   saveItems();
   saveSettings();
