@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>私たちの単語帳</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <h1>📖 私たちの単語帳</h1>
+
+    <p class="badge">今日の復習: <span id="dueCount">0</span> 件</p>
+
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="sentences">文章</button>
+      <button class="tab-btn" data-tab="words">単語一覧</button>
+      <button class="tab-btn" data-tab="study">学習</button>
+    </div>
+
+    <section id="sentencesTab" class="tab-content active">
+      <form id="sentenceForm">
+        <input type="text" id="sentenceUaInput" placeholder="ウクライナ語の文章" required>
+        <input type="text" id="sentenceJaInput" placeholder="日本語訳" required>
+        <button type="submit">追加</button>
+      </form>
+      <ul id="sentenceList"></ul>
+    </section>
+
+    <section id="wordsTab" class="tab-content">
+      <form id="wordForm">
+        <input type="text" id="wordUaInput" placeholder="ウクライナ語" required>
+        <input type="text" id="wordJaInput" placeholder="日本語訳（任意）">
+        <input type="text" id="wordReadingInput" placeholder="読み（任意）">
+        <button type="submit">追加</button>
+      </form>
+      <ul id="wordList"></ul>
+    </section>
+
+    <section id="studyTab" class="tab-content">
+      <div class="direction-toggle">
+        <button class="dir-btn active" data-dir="ua-ja">ウクライナ語→日本語</button>
+        <button class="dir-btn" data-dir="ja-ua">日本語→ウクライナ語</button>
+      </div>
+
+      <div class="flashcard" id="flashcard">
+        <div class="flashcard-inner" id="flashcardInner">
+          <div class="flashcard-face flashcard-front" id="cardFront"></div>
+          <div class="flashcard-face flashcard-back" id="cardBack"></div>
+        </div>
+      </div>
+      <p class="hint">カードをクリックして裏返す</p>
+
+      <p id="studyEmpty" class="study-empty" hidden>復習する単語がありません 🎉</p>
+
+      <div class="rating-buttons" id="ratingButtons" hidden>
+        <button class="rating-btn again" data-rating="again">もう一度</button>
+        <button class="rating-btn hard" data-rating="hard">難しい</button>
+        <button class="rating-btn good" data-rating="good">普通</button>
+        <button class="rating-btn easy" data-rating="easy">簡単</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
