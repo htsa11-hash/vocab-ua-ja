@@ -126,7 +126,7 @@ sentenceForm.addEventListener('submit', async (e) => {
   if (translated === null) {
     sentenceTranslation.textContent = '⚠ 翻訳に失敗しました（オフラインまたはAPI制限）。手動で確認してください。';
   } else {
-    sentenceTranslation.textContent = source === 'uk' ? translated : `(UA) ${translated}`;
+    sentenceTranslation.textContent = translated;
   }
 
   if (source === 'uk') {

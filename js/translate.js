@@ -1,9 +1,9 @@
-// --- Translation: LibreTranslate first, with fallback endpoints ---
+// --- Translation: MyMemory (free, CORS-friendly, no key) as primary,
+//     with LibreTranslate instances as fallback. ---
 
-const ENDPOINTS = [
-  'https://libretranslate.de/translate',
+const LIBRE_ENDPOINTS = [
   'https://translate.terraprint.co/translate',
-  'https://libretranslate.com/translate',
+  'https://libretranslate.de/translate',
 ];
 
 // Naive language detection: Cyrillic -> Ukrainian, otherwise Japanese.
@@ -11,7 +11,19 @@ export function detectLang(text) {
   return /[Ѐ-ӿ]/.test(text) ? 'uk' : 'ja';
 }
 
-async function tryEndpoint(url, text, source, target) {
+async function tryMyMemory(text, source, target) {
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const translated = data?.responseData?.translatedText;
+  if (!translated) throw new Error('no translatedText');
+  // MyMemory returns the original text (sometimes with a notice) on failure.
+  if (/MYMEMORY WARNING|INVALID/i.test(translated)) throw new Error('mymemory warning');
+  return translated;
+}
+
+async function tryLibre(url, text, source, target) {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -23,12 +35,19 @@ async function tryEndpoint(url, text, source, target) {
   return data.translatedText;
 }
 
-// Returns translated text, or null if every endpoint failed.
+// Returns translated text, or null if every backend failed.
 export async function translateText(text, source, target) {
   if (!text.trim()) return '';
-  for (const url of ENDPOINTS) {
+
+  try {
+    return await tryMyMemory(text, source, target);
+  } catch (e) {
+    // fall through to LibreTranslate fallbacks
+  }
+
+  for (const url of LIBRE_ENDPOINTS) {
     try {
-      return await tryEndpoint(url, text, source, target);
+      return await tryLibre(url, text, source, target);
     } catch (e) {
       // try next endpoint
     }
@@ -37,14 +56,14 @@ export async function translateText(text, source, target) {
 }
 
 // Translate many short strings (words) sequentially with a small delay
-// to be gentle on free public instances. Calls onProgress(i, total) as it goes.
+// to be gentle on free public APIs. Calls onProgress(i, total) as it goes.
 export async function translateWords(wordList, source, target, onProgress) {
   const results = [];
   for (let i = 0; i < wordList.length; i++) {
     const t = await translateText(wordList[i], source, target);
     results.push(t === null ? '' : t);
     if (onProgress) onProgress(i + 1, wordList.length);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, 200));
   }
   return results;
 }
