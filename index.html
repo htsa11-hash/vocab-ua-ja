@@ -53,8 +53,13 @@
         </div>
       </div>
 
-      <h3 data-i18n="recentSentencesHeading">最近学習した文章</h3>
+      <h3 data-i18n="sentencesHeading">文章一覧</h3>
       <div class="filter-row">
+        <label data-i18n="viewLabel">表示</label>
+        <select id="sentenceViewFilter">
+          <option value="all" data-i18n="viewAll">すべて</option>
+          <option value="recent" data-i18n="viewRecent">最近</option>
+        </select>
         <label data-i18n="categoryLabel">カテゴリ</label>
         <select id="sentenceCategoryFilter">
           <option value="all" data-i18n="filterAll">全て</option>

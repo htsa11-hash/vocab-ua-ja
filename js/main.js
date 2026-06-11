@@ -162,8 +162,10 @@ const wordChips = document.getElementById('wordChips');
 const saveSentenceBtn = document.getElementById('saveSentenceBtn');
 const recentSentences = document.getElementById('recentSentences');
 const sentenceCategoryFilter = document.getElementById('sentenceCategoryFilter');
+const sentenceViewFilter = document.getElementById('sentenceViewFilter');
 
 sentenceCategoryFilter.addEventListener('change', renderRecentSentences);
+sentenceViewFilter.addEventListener('change', renderRecentSentences);
 
 let pendingWords = []; // [source, ...]
 
@@ -234,9 +236,11 @@ saveSentenceBtn.addEventListener('click', () => {
 function renderRecentSentences() {
   recentSentences.innerHTML = '';
   const catFilter = sentenceCategoryFilter.value;
-  sentenceItems().slice().reverse()
-    .filter((s) => catFilter === 'all' || s.category === catFilter)
-    .slice(0, 10).forEach((s) => {
+  const viewFilter = sentenceViewFilter.value;
+  let list = sentenceItems().slice().reverse()
+    .filter((s) => catFilter === 'all' || s.category === catFilter);
+  if (viewFilter === 'recent') list = list.slice(0, 10);
+  list.forEach((s) => {
     const li = document.createElement('li');
     li.className = 'sentence-item';
 
