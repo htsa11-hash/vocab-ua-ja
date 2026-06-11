@@ -26,7 +26,7 @@ export function findVocabItem(source) {
 }
 
 // Add a word/phrase item if not already present (matched by type+source).
-export function addVocabItem({ source, target = '', reading = '', category = '', type = 'word' }) {
+export function addVocabItem({ source, target = '', reading = '', type = 'word' }) {
   const existing = findItem(source, type);
   if (existing) {
     if (target && !existing.target) existing.target = target;
@@ -34,7 +34,7 @@ export function addVocabItem({ source, target = '', reading = '', category = '',
     saveItems();
     return existing;
   }
-  const item = makeWordItem({ source, target, reading, category, type });
+  const item = makeWordItem({ source, target, reading, type });
   state.items.push(item);
   saveItems();
   bumpTodayAdded(1);

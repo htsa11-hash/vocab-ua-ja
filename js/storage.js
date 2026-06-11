@@ -61,7 +61,6 @@ function migrateOldData() {
       source: w.ua || '',
       target: w.ja || '',
       reading: w.reading || '',
-      category: normalizeCategory(w.category),
       reviewFlag: false,
       date: w.stats?.addedDate || todayStr(),
       weak: !!w.weak,
@@ -89,7 +88,13 @@ function migrateOldData() {
 }
 
 function normalizeItemCategories(items) {
-  items.forEach((it) => { it.category = normalizeCategory(it.category); });
+  items.forEach((it) => {
+    if (it.type === 'sentence') {
+      it.category = normalizeCategory(it.category);
+    } else {
+      delete it.category;
+    }
+  });
   return items;
 }
 
@@ -109,14 +114,13 @@ export function saveSettings() {
 }
 
 // --- Item factories ---
-export function makeWordItem({ source, target = '', reading = '', category = '', type = 'word' }) {
+export function makeWordItem({ source, target = '', reading = '', type = 'word' }) {
   return {
     id: makeId(),
     type, // 'word' | 'phrase'
     source: source.trim().toLowerCase(),
     target,
     reading,
-    category: normalizeCategory(category),
     reviewFlag: false,
     date: todayStr(),
     weak: false,
