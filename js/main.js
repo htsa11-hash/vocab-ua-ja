@@ -9,6 +9,7 @@ import {
 } from './words.js';
 import { makeSpeakButton } from './tts.js';
 import { t, setLang, getLang, applyStaticTranslations, CATEGORIES, normalizeCategory } from './i18n.js';
+import { APP_VERSION } from './version.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -31,16 +32,23 @@ const statsList = document.getElementById('statsList');
 const exportBtn = document.getElementById('exportBtn');
 const importFile = document.getElementById('importFile');
 const languageSelect = document.getElementById('languageSelect');
+const appVersionEl = document.getElementById('appVersion');
+
+function updateVersionDisplay() {
+  appVersionEl.textContent = `${t('versionLabel')}: ${APP_VERSION}`;
+}
 
 setLang(state.settings.lang || 'ja');
 languageSelect.value = getLang();
 applyStaticTranslations();
+updateVersionDisplay();
 
 languageSelect.addEventListener('change', () => {
   state.settings.lang = languageSelect.value;
   saveSettings();
   setLang(state.settings.lang);
   applyStaticTranslations();
+  updateVersionDisplay();
   renderStats();
   refreshAll();
 });
