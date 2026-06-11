@@ -224,8 +224,13 @@ saveSentenceBtn.addEventListener('click', () => {
   const category = categoryInput.value.trim();
   const words = [...pendingWords];
 
-  words.forEach((w) => addVocabItem({ source: w, type: 'word' }));
-  addSentence({ source, target, category, words });
+  if (words.length <= 1) {
+    // Single-word input: register directly as a vocabulary word, not a sentence.
+    addVocabItem({ source, target, type: 'word' });
+  } else {
+    words.forEach((w) => addVocabItem({ source: w, type: 'word' }));
+    addSentence({ source, target, category, words });
+  }
 
   saveItems();
   sentenceForm.hidden = true;
