@@ -16,27 +16,97 @@
       <button class="tab-btn active" data-tab="sentences">文章</button>
       <button class="tab-btn" data-tab="words">単語一覧</button>
       <button class="tab-btn" data-tab="study">学習</button>
+      <button class="tab-btn" data-tab="test">テスト</button>
+      <button class="tab-btn" data-tab="settings">設定</button>
     </div>
 
+    <!-- ===================== 文章タブ ===================== -->
     <section id="sentencesTab" class="tab-content active">
       <form id="sentenceForm">
-        <input type="text" id="sentenceUaInput" placeholder="ウクライナ語の文章" required>
-        <input type="text" id="sentenceJaInput" placeholder="日本語訳" required>
-        <button type="submit">追加</button>
+        <textarea id="sentenceInput" placeholder="ウクライナ語または日本語の文章を入力" required rows="2"></textarea>
+        <div class="lang-row">
+          <label>入力言語:</label>
+          <select id="sentenceLang">
+            <option value="auto">自動判定</option>
+            <option value="uk">ウクライナ語</option>
+            <option value="ja">日本語</option>
+          </select>
+          <button type="submit">翻訳して分解</button>
+        </div>
       </form>
+
+      <div id="sentenceResult" class="sentence-result" hidden>
+        <div class="sentence-original" id="sentenceOriginal"></div>
+        <div class="sentence-translation" id="sentenceTranslation"></div>
+        <button id="speakSentenceBtn" class="speak-btn" hidden>🔊</button>
+
+        <div class="comprehension" id="comprehension"></div>
+        <label class="dedupe-toggle">
+          <input type="checkbox" id="dedupeToggle" checked> 重複単語を除いて計算
+        </label>
+
+        <h3>単語ごとの翻訳</h3>
+        <table class="word-table">
+          <thead>
+            <tr><th>単語</th><th>翻訳</th><th>読み</th><th></th></tr>
+          </thead>
+          <tbody id="wordTableBody"></tbody>
+        </table>
+        <div class="bulk-actions">
+          <button id="bulkAddBtn">未登録の単語をまとめて追加</button>
+          <button id="saveSentenceBtn">この文章を保存</button>
+        </div>
+      </div>
+
+      <h3>保存した文章</h3>
       <ul id="sentenceList"></ul>
     </section>
 
+    <!-- 単語タップ用パネル -->
+    <div id="wordPanel" class="word-panel" hidden>
+      <button class="word-panel-close" id="wordPanelClose">×</button>
+      <div class="word-panel-content" id="wordPanelContent"></div>
+    </div>
+
+    <!-- ===================== 単語一覧タブ ===================== -->
     <section id="wordsTab" class="tab-content">
       <form id="wordForm">
         <input type="text" id="wordUaInput" placeholder="ウクライナ語" required>
         <input type="text" id="wordJaInput" placeholder="日本語訳（任意）">
         <input type="text" id="wordReadingInput" placeholder="読み（任意）">
+        <select id="wordCategoryInput">
+          <option value="">カテゴリなし</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="日常会話">日常会話</option>
+          <option value="旅行">旅行</option>
+          <option value="ニュース">ニュース</option>
+          <option value="学校">学校</option>
+        </select>
         <button type="submit">追加</button>
       </form>
+
+      <div class="filter-row">
+        <input type="text" id="wordSearch" placeholder="検索...">
+        <select id="categoryFilter">
+          <option value="">全カテゴリ</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="日常会話">日常会話</option>
+          <option value="旅行">旅行</option>
+          <option value="ニュース">ニュース</option>
+          <option value="学校">学校</option>
+          <option value="none">(カテゴリなし)</option>
+        </select>
+        <label><input type="checkbox" id="weakFilter"> 苦手のみ</label>
+      </div>
+
       <ul id="wordList"></ul>
     </section>
 
+    <!-- ===================== 学習タブ (SRS復習) ===================== -->
     <section id="studyTab" class="tab-content">
       <div class="direction-toggle">
         <button class="dir-btn active" data-dir="ua-ja">ウクライナ語→日本語</button>
@@ -49,19 +119,93 @@
           <div class="flashcard-face flashcard-back" id="cardBack"></div>
         </div>
       </div>
-      <p class="hint">カードをクリックして裏返す</p>
+      <p class="hint">カードをタップして裏返す</p>
 
       <p id="studyEmpty" class="study-empty" hidden>復習する単語がありません 🎉</p>
 
       <div class="rating-buttons" id="ratingButtons" hidden>
-        <button class="rating-btn again" data-rating="again">もう一度</button>
-        <button class="rating-btn hard" data-rating="hard">難しい</button>
-        <button class="rating-btn good" data-rating="good">普通</button>
-        <button class="rating-btn easy" data-rating="easy">簡単</button>
+        <button class="rating-btn again" data-rating="again">覚えてない</button>
+        <button class="rating-btn hard" data-rating="hard">まだ不安</button>
+        <button class="rating-btn good" data-rating="good">覚えた</button>
+        <button class="rating-btn easy" data-rating="easy">バッチリ</button>
       </div>
+    </section>
+
+    <!-- ===================== テストタブ ===================== -->
+    <section id="testTab" class="tab-content">
+      <div class="test-setup" id="testSetup">
+        <div class="form-row">
+          <label>方向:</label>
+          <select id="testDirection">
+            <option value="ua-ja">ウクライナ語→日本語</option>
+            <option value="ja-ua">日本語→ウクライナ語</option>
+            <option value="random">ランダム</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>形式:</label>
+          <select id="testMode">
+            <option value="input">入力式</option>
+            <option value="choice">選択式</option>
+            <option value="card">カード反転式</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>範囲:</label>
+          <select id="testScope">
+            <option value="all">全単語</option>
+            <option value="weak">苦手単語のみ</option>
+          </select>
+        </div>
+        <button id="startTestBtn">テスト開始</button>
+      </div>
+
+      <div id="testArea" class="test-area" hidden>
+        <p class="test-progress" id="testProgress"></p>
+        <div class="test-question" id="testQuestion"></div>
+
+        <form id="testInputForm" class="test-input-form" hidden>
+          <input type="text" id="testAnswerInput" placeholder="答えを入力" autocomplete="off">
+          <button type="submit">解答</button>
+        </form>
+
+        <div id="testChoices" class="test-choices" hidden></div>
+
+        <div id="testCard" class="flashcard" hidden>
+          <div class="flashcard-inner" id="testCardInner">
+            <div class="flashcard-face flashcard-front" id="testCardFront"></div>
+            <div class="flashcard-face flashcard-back" id="testCardBack"></div>
+          </div>
+        </div>
+        <div id="testCardButtons" class="rating-buttons" hidden>
+          <button class="rating-btn again" data-correct="false">不正解だった</button>
+          <button class="rating-btn good" data-correct="true">正解だった</button>
+        </div>
+
+        <div id="testFeedback" class="test-feedback" hidden></div>
+        <button id="nextQuestionBtn" hidden>次へ</button>
+      </div>
+
+      <div id="testResult" class="test-result" hidden></div>
+    </section>
+
+    <!-- ===================== 設定タブ ===================== -->
+    <section id="settingsTab" class="tab-content">
+      <h3>学習統計</h3>
+      <ul class="stats-list" id="statsList"></ul>
+
+      <h3>データ管理</h3>
+      <div class="settings-actions">
+        <button id="exportBtn">JSONエクスポート</button>
+        <label class="import-label">
+          JSONインポート
+          <input type="file" id="importFile" accept="application/json" hidden>
+        </label>
+      </div>
+      <p class="hint">エクスポートしたファイルを保管しておくと、別の端末やブラウザでもデータを復元できます。</p>
     </section>
   </div>
 
-  <script src="script.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

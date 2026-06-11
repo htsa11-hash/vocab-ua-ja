@@ -298,3 +298,366 @@ h1 {
 .rating-btn.hard { background: #4a0e2e; color: #87ceeb; }
 .rating-btn.good { background: #87ceeb; }
 .rating-btn.easy { background: #2d1b4e; color: #87ceeb; }
+
+/* ===================== Sentence tab ===================== */
+#sentenceForm textarea {
+  padding: 10px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #2d1b4e;
+  color: #87ceeb;
+  resize: vertical;
+}
+
+#sentenceForm textarea::placeholder { color: #6fa8c9; }
+
+.lang-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lang-row label { font-size: 13px; color: #6fa8c9; }
+
+.lang-row select,
+#wordCategoryInput,
+#categoryFilter,
+#testDirection,
+#testMode,
+#testScope,
+#wordList select {
+  padding: 8px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  background: #2d1b4e;
+  color: #87ceeb;
+  font-size: 13px;
+}
+
+.lang-row button,
+.bulk-actions button,
+#startTestBtn,
+.settings-actions button,
+.import-label {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.sentence-result {
+  background: #2d1b4e;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.sentence-original {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.sentence-translation {
+  color: #6fa8c9;
+  margin-bottom: 8px;
+}
+
+.comprehension {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.dedupe-toggle {
+  display: block;
+  font-size: 12px;
+  color: #6fa8c9;
+  margin-bottom: 8px;
+}
+
+.word-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.word-table th,
+.word-table td {
+  border-bottom: 1px solid #4a0e2e;
+  padding: 6px 4px;
+  text-align: left;
+}
+
+.word-table .tap-word {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.word-table button,
+#wordList .speak-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.sentence-meta {
+  font-size: 11px;
+  color: #6fa8c9;
+  margin-top: 4px;
+  padding-right: 28px;
+}
+
+/* ===================== Status colors ===================== */
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.st-registered { background: #2ecc71; }
+.st-unregistered { background: #e74c3c; }
+.st-weak { background: #e67e22; }
+.st-due { background: #3498db; }
+
+tr.st-registered td:first-child,
+li.st-registered .word-ua { color: #2ecc71; }
+tr.st-unregistered td:first-child,
+li.st-unregistered .word-ua { color: #e74c3c; }
+tr.st-weak td:first-child,
+li.st-weak .word-ua { color: #e67e22; }
+tr.st-due td:first-child,
+li.st-due .word-ua { color: #3498db; }
+
+/* ===================== Word panel ===================== */
+.word-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #1a1226;
+  border-top: 2px solid #87ceeb;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+
+.word-panel-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #87ceeb;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.word-panel-content > div {
+  margin-bottom: 8px;
+  color: #87ceeb;
+}
+
+.word-panel-title {
+  font-size: 18px;
+  font-weight: bold;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.word-panel-status button {
+  margin-left: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #87ceeb;
+  color: #1a1226;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* ===================== Word list filters ===================== */
+.filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.filter-row input[type="text"] {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  background: #2d1b4e;
+  color: #87ceeb;
+  font-size: 13px;
+}
+
+.filter-row label {
+  font-size: 12px;
+  color: #6fa8c9;
+}
+
+/* ===================== Test tab ===================== */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.form-row label { color: #6fa8c9; font-size: 13px; min-width: 60px; }
+
+.test-area { margin-top: 12px; }
+
+.test-progress {
+  font-size: 12px;
+  color: #6fa8c9;
+  margin-bottom: 8px;
+}
+
+.test-question {
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.test-input-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.test-input-form input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #4a0e2e;
+  border-radius: 8px;
+  background: #2d1b4e;
+  color: #87ceeb;
+  font-size: 14px;
+}
+
+.test-input-form button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.test-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.choice-btn {
+  padding: 12px;
+  border: 2px solid #87ceeb;
+  background: transparent;
+  color: #87ceeb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.choice-btn:hover { background: #87ceeb; color: #1a1226; }
+
+.test-feedback {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.test-feedback.correct { background: #1f4d2c; color: #2ecc71; }
+.test-feedback.incorrect { background: #4d1f1f; color: #e74c3c; }
+
+#nextQuestionBtn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.test-result {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.test-result button {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #87ceeb;
+  color: #1a1226;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ===================== Settings tab ===================== */
+.stats-list {
+  list-style: none;
+  margin-bottom: 16px;
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  border-bottom: 1px solid #4a0e2e;
+  font-size: 14px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.import-label {
+  display: inline-block;
+}
+
+#settingsTab h3,
+#sentencesTab h3 {
+  margin: 12px 0 8px;
+  color: #87ceeb;
+}
+
+#wordList .word-panel-example { font-size: 12px; }
