@@ -1,5 +1,5 @@
 import {
-  state, saveItems, exportData, importData, todayStr,
+  state, saveItems, saveSettings, exportData, importData, todayStr,
   bumpTodayLearned, bumpStreak,
 } from './storage.js';
 import {
@@ -8,6 +8,7 @@ import {
   recordTestResult, vocabItems, sentenceItems,
 } from './words.js';
 import { makeSpeakButton } from './tts.js';
+import { t, setLang, getLang, applyStaticTranslations } from './i18n.js';
 
 // ========================= Tabs =========================
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -42,6 +43,20 @@ const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const statsList = document.getElementById('statsList');
 const exportBtn = document.getElementById('exportBtn');
 const importFile = document.getElementById('importFile');
+const languageSelect = document.getElementById('languageSelect');
+
+setLang(state.settings.lang || 'ja');
+languageSelect.value = getLang();
+applyStaticTranslations();
+
+languageSelect.addEventListener('change', () => {
+  state.settings.lang = languageSelect.value;
+  saveSettings();
+  setLang(state.settings.lang);
+  applyStaticTranslations();
+  renderStats();
+  refreshAll();
+});
 
 function openSettings() {
   console.log('[settings] open() called');
@@ -98,11 +113,11 @@ function renderStats() {
   const accuracy = (totalCorrect + totalIncorrect) === 0 ? 0 : Math.round((totalCorrect / (totalCorrect + totalIncorrect)) * 100);
 
   const items = [
-    ['総単語数', total],
-    ['苦手単語数', weak],
-    ['復習待ち件数', due],
-    ['正答率', `${accuracy}%`],
-    ['連続学習日数', `${state.settings.streak} 日`],
+    [t('statTotalWords'), total],
+    [t('statWeak'), weak],
+    [t('statDue'), due],
+    [t('statAccuracy'), `${accuracy}%`],
+    [t('statStreak'), `${state.settings.streak} ${t('streakUnit')}`],
   ];
 
   statsList.innerHTML = '';
@@ -130,9 +145,9 @@ importFile.addEventListener('change', async (e) => {
   try {
     importData(text);
     refreshAll();
-    alert('インポートが完了しました。');
+    alert(t('importSuccess'));
   } catch (err) {
-    alert('インポートに失敗しました: ' + err.message);
+    alert(t('importFailPrefix') + err.message);
   }
   importFile.value = '';
 });
@@ -174,7 +189,7 @@ function resetSentenceForm() {
 extractBtn.addEventListener('click', () => {
   const text = sourceInput.value.trim();
   if (!text) {
-    alert('原文を入力してください。');
+    alert(t('emptySourceAlert'));
     return;
   }
   const { words } = extractFromSentence(text);
@@ -189,7 +204,7 @@ function renderChips() {
     const chip = document.createElement('span');
     chip.className = 'chip chip-word';
     chip.textContent = source;
-    chip.title = 'タップで削除';
+    chip.title = t('extractHint');
     chip.addEventListener('click', () => {
       pendingWords.splice(idx, 1);
       renderChips();
@@ -197,7 +212,7 @@ function renderChips() {
     wordChips.appendChild(chip);
   });
   if (pendingWords.length === 0) {
-    wordChips.innerHTML = '<span class="hint">なし</span>';
+    wordChips.innerHTML = `<span class="hint">${t('noCategory')}</span>`;
   }
 }
 
@@ -229,12 +244,12 @@ function renderRecentSentences() {
 
     const tgt = document.createElement('div');
     tgt.className = 'sentence-ja';
-    tgt.textContent = s.target || '(翻訳未入力)';
+    tgt.textContent = s.target || t('noTranslation');
 
     const meta = document.createElement('div');
     meta.className = 'sentence-meta';
     const wordCount = (s.words || []).length;
-    meta.textContent = `登録日: ${s.date} / カテゴリ: ${s.category || 'なし'} / 理解率: ${s.comprehension}% / 単語数: ${wordCount}`;
+    meta.textContent = t('sentenceMeta', { date: s.date, category: s.category || t('noCategory'), rate: s.comprehension, count: wordCount });
 
     const actions = document.createElement('div');
     actions.className = 'sentence-actions';
@@ -242,14 +257,14 @@ function renderRecentSentences() {
     const speakBtn = makeSpeakButton(s.source, 'uk-UA');
 
     const editBtn = document.createElement('button');
-    editBtn.textContent = '編集';
+    editBtn.textContent = t('editBtn');
     editBtn.className = 'small-btn';
     editBtn.addEventListener('click', () => openSentenceEditor(li, s));
 
     const delBtn = document.createElement('button');
     delBtn.className = 'delete-btn';
     delBtn.textContent = '🗑️';
-    delBtn.title = '削除';
+    delBtn.title = t('deleteTitle');
     delBtn.addEventListener('click', () => {
       removeItem(s.id);
       refreshAll();
@@ -267,7 +282,7 @@ function renderRecentSentences() {
   });
 
   if (sentenceItems().length === 0) {
-    recentSentences.innerHTML = '<li class="hint">まだ文章が登録されていません。「＋ 新しい文章を追加」から始めましょう。</li>';
+    recentSentences.innerHTML = `<li class="hint">${t('emptySentences')}</li>`;
   }
 }
 
@@ -285,25 +300,25 @@ function openSentenceEditor(li, s) {
   const catInput = document.createElement('input');
   catInput.type = 'text';
   catInput.value = s.category || '';
-  catInput.placeholder = 'カテゴリ';
+  catInput.placeholder = t('categoryPlaceholder');
 
   const actions = document.createElement('div');
   actions.className = 'sentence-actions';
 
   const reExtractBtn = document.createElement('button');
   reExtractBtn.className = 'small-btn';
-  reExtractBtn.textContent = '再抽出';
+  reExtractBtn.textContent = t('reExtractBtn');
   reExtractBtn.addEventListener('click', () => {
     const { words } = extractFromSentence(srcInput.value.trim());
     s.words = words;
     words.forEach((w) => addVocabItem({ source: w, category: catInput.value.trim(), type: 'word' }));
     saveItems();
-    alert('単語を再抽出しました。');
+    alert(t('reExtractDone'));
   });
 
   const saveBtn = document.createElement('button');
   saveBtn.className = 'small-btn primary-btn';
-  saveBtn.textContent = '保存';
+  saveBtn.textContent = t('saveBtn');
   saveBtn.addEventListener('click', () => {
     s.source = srcInput.value.trim();
     s.target = tgtInput.value.trim();
@@ -314,7 +329,7 @@ function openSentenceEditor(li, s) {
 
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'small-btn ghost-btn';
-  cancelBtn.textContent = 'キャンセル';
+  cancelBtn.textContent = t('cancelBtn');
   cancelBtn.addEventListener('click', () => renderRecentSentences());
 
   actions.appendChild(reExtractBtn);
@@ -355,7 +370,7 @@ function renderVocabList() {
     .forEach((item) => vocabList.appendChild(renderVocabRow(item)));
 
   if (vocabList.children.length === 0) {
-    vocabList.innerHTML = '<li class="hint">該当する項目がありません。</li>';
+    vocabList.innerHTML = `<li class="hint">${t('emptyVocab')}</li>`;
   }
 }
 
@@ -375,7 +390,7 @@ function renderVocabRow(item) {
 
   const targetInputEl = document.createElement('input');
   targetInputEl.type = 'text';
-  targetInputEl.placeholder = '意味（未入力）';
+  targetInputEl.placeholder = t('meaningPlaceholder');
   targetInputEl.className = 'vocab-target';
   targetInputEl.classList.toggle('empty-ja', !item.target);
   targetInputEl.value = item.target;
@@ -391,8 +406,8 @@ function renderVocabRow(item) {
 
   const weakBtn = document.createElement('button');
   weakBtn.className = `review-btn${item.weak ? ' active' : ''}`;
-  weakBtn.textContent = item.weak ? '苦手' : '苦手にする';
-  weakBtn.title = '苦手フラグを切り替え';
+  weakBtn.textContent = item.weak ? t('weakBtnOn') : t('weakBtnOff');
+  weakBtn.title = t('weakBtnOff');
   weakBtn.addEventListener('click', () => {
     item.weak = !item.weak;
     saveItems();
@@ -401,7 +416,7 @@ function renderVocabRow(item) {
 
   const statsEl = document.createElement('span');
   statsEl.className = 'vocab-stats';
-  statsEl.textContent = `正解 ${item.stats.correct} / 不正解 ${item.stats.incorrect}`;
+  statsEl.textContent = t('vocabStats', { correct: item.stats.correct, incorrect: item.stats.incorrect });
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'delete-btn';
@@ -437,7 +452,6 @@ function renderVocabRow(item) {
 const testSetup = document.getElementById('testSetup');
 const testDirection = document.getElementById('testDirection');
 const testMode = document.getElementById('testMode');
-const testTypeScope = document.getElementById('testTypeScope');
 const testScope = document.getElementById('testScope');
 const startTestBtn = document.getElementById('startTestBtn');
 const testArea = document.getElementById('testArea');
@@ -462,11 +476,10 @@ let testQuestionDir = 'ua-ja';
 
 startTestBtn.addEventListener('click', () => {
   let pool = vocabItems().filter((it) => it.source && it.target);
-  if (testTypeScope.value) pool = pool.filter((it) => it.type === testTypeScope.value);
   if (testScope.value === 'weak') pool = pool.filter((it) => it.weak);
   if (testScope.value === 'due') pool = pool.filter((it) => it.srs.dueDate <= todayStr());
   if (pool.length === 0) {
-    alert('対象となる項目がありません。');
+    alert(t('noTestItemsAlert'));
     return;
   }
   testQueue = shuffle(pool).slice(0, Math.min(pool.length, 20));
@@ -509,7 +522,7 @@ function showTestQuestion() {
 
   const item = testQueue[testIndex];
   testQuestionDir = currentDirection();
-  testProgress.textContent = `第 ${testIndex + 1} / ${testQueue.length} 問`;
+  testProgress.textContent = t('progressLabel', { current: testIndex + 1, total: testQueue.length });
 
   const prompt = testQuestionDir === 'ua-ja' ? item.source : item.target;
   const answer = testQuestionDir === 'ua-ja' ? item.target : item.source;
@@ -579,10 +592,10 @@ function gradeAnswer(item, correct, userAnswer, expected, rating) {
   testFeedback.className = `test-feedback ${correct ? 'correct' : 'incorrect'}`;
   if (expected !== null) {
     testFeedback.textContent = correct
-      ? '✅ 正解！'
-      : `❌ 不正解。正解: ${expected}（あなたの回答: ${userAnswer || '(空欄)'}）`;
+      ? t('feedbackCorrect')
+      : t('feedbackIncorrect', { expected, answer: userAnswer || t('feedbackEmptyAnswer') });
   } else {
-    testFeedback.textContent = correct ? '✅ 正解！' : '❌ 覚えていない、として記録しました。';
+    testFeedback.textContent = correct ? t('feedbackCorrect') : t('feedbackIncorrectNoExpected');
   }
 
   nextQuestionBtn.hidden = false;
@@ -600,9 +613,9 @@ function finishTest() {
   const total = testQueue.length;
   const rate = total === 0 ? 0 : Math.round((testCorrectCount / total) * 100);
   testResult.innerHTML = `
-    <h3>結果</h3>
-    <p>正解数: ${testCorrectCount} / ${total}（正答率 ${rate}%）</p>
-    <button id="restartTestBtn">もう一度テストを設定する</button>
+    <h3>${t('resultHeading')}</h3>
+    <p>${t('resultLine', { correct: testCorrectCount, total, rate })}</p>
+    <button id="restartTestBtn">${t('restartBtn')}</button>
   `;
   document.getElementById('restartTestBtn').addEventListener('click', () => {
     testResult.hidden = true;

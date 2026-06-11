@@ -29,6 +29,7 @@ function save(key, value) {
 
 function defaultSettings() {
   return {
+    lang: 'ja',
     lastStudyDate: null,
     streak: 0,
     todayAdded: { date: todayStr(), count: 0 },

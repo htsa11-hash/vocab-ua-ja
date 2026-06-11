@@ -1,5 +1,7 @@
 // --- Text-to-speech via SpeechSynthesis (browser built-in) ---
 
+import { t } from './i18n.js';
+
 export const ttsSupported = 'speechSynthesis' in window;
 
 export function speak(text, lang = 'uk-UA') {
@@ -16,10 +18,10 @@ export function makeSpeakButton(text, lang = 'uk-UA') {
   btn.type = 'button';
   btn.className = 'speak-btn';
   btn.textContent = '🔊';
-  btn.title = '読み上げ';
+  btn.title = t('speakTitle');
   if (!ttsSupported) {
     btn.disabled = true;
-    btn.title = 'お使いのブラウザは音声読み上げに対応していません';
+    btn.title = t('speakUnsupported');
   } else {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

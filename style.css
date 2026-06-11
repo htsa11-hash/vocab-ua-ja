@@ -327,6 +327,7 @@ h1 {
 #testDirection,
 #testMode,
 #testScope,
+#languageSelect,
 #wordList select {
   padding: 8px;
   border: 1px solid #4a0e2e;
